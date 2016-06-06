@@ -1,0 +1,8 @@
+app:
+  build: .
+  volumes:
+    ./public:/app/public
+  environment:
+    VIRTUAL_HOST: share.localhost,dl.center
+    LETSENCRYPT_EMAIL: letsencrypt@simkim.net
+    LETSENCRYPT_HOST: dl.center

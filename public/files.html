@@ -1,0 +1,54 @@
+<h1 class="ui teal header" style="margin-top: 32px;">Transfer files between nearby devices</h1>
+<div class="ui blue message">
+  Ever wanted to transfer a file from your computer to your tablet ? Without installing an app, without typing password, without trying to make airdrop work. This service is for YOU.
+</div>
+<div class="ui warning message">
+  <i class="close icon"></i>
+  <div class="header">
+    This service is still in a proof of concept stage, temporary limitations applies. Please send comment to contact at dl.center
+  </div>
+  <ul>
+    <li>File size is limited to 5MB</li>
+    <li>You must reload the page after adding more than 10MB of files (may differ between browsers)</li>
+    <li>Only tested with firefox &amp; chrome</li>
+    <li>There is a 60s timeout to download files</li>
+    <li>Expect other various random problem ...</li>
+  </ul>
+</div>
+
+<input type="file" class='file-upload'/>
+<div>
+  <div class="ui tablet stackable steps">
+    <div class="step file-upload" ng-class="{active: local_files.length == 0}">
+      <i class='add icon'></i>
+      <div class="content">
+        <div class="title">Upload your file</div>
+        <div class="description">Stay here</div>
+      </div>
+    </div>
+    <div class="step" ng-class="{active: local_files.length > 0}">
+      <i class='download icon'></i>
+      <div class="content">
+        <div class="title">Open <a href='#' class='ui teal' target='_blank'>dl.center</a> on another device using the same internet connection</div>
+        <div class="description">Download your file</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div ng-repeat="client in files" class='user-files'>
+  <div ng-if="client.files.length > 0" class="ui raised segments" style="margin-bottom: 12px;">
+    <div class="ui attached top teal header">
+      Files shared
+    </div>
+    <a  ng-href='/file/{{file.name}}'
+    target='_blank'
+    download
+    ng-repeat="file in client.files"
+    class="ui attached segment"
+    style="display:block;">
+    <qrcode data="{{downloadhost}}/file/{{file.name}}"></qrcode>
+    <span class="filename">{{file.name}}</span>
+  </a>
+</div>
+</div>

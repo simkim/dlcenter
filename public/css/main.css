@@ -1,0 +1,30 @@
+input.file-upload {
+  visibility: hidden;
+}
+div.file-upload {
+  cursor: pointer !important;
+}
+.user-files {
+  margin-top: 12px;
+}
+.main-view {
+  display: -webkit-flex;
+  display: flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 1 1 100%;
+  overflow: auto;
+}
+body {
+  display: -webkit-flex;
+  display:flex;
+  flex-direction: column;
+  height: 100%;
+}
+qrcode canvas {
+  vertical-align: middle;
+}
+.filename {
+  padding-left: 32px;
+  font-size: 1.2rem;
+}
