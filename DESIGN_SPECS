@@ -1,0 +1,8 @@
+layers :
+
+backend   : redis ? memory ? 
+registry  : domain, IP, file 
+engine    : EM transfer
+websocket : live synchro 
+web       : public, engine entrypoint 
+
