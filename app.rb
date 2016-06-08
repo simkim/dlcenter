@@ -189,9 +189,12 @@ class FileCenter
   end
 end
 
+require "dlcenter/registry"
+
 set :server, 'thin'
 set :center, FileCenter.new
 set :static, true
+set :registry, DLCenter::Registry.new
 
 get '/ws' do
   request.websocket do |ws|
@@ -202,6 +205,27 @@ end
 get '/' do
   puts "Visitor from #{request.ip}"
   File.read(settings.public_folder+'/index.html')
+end
+
+def namespace_for_request(request)
+  settings.registry.context_for(request.ip).namespace_for(:default)
+end
+
+get '/g' do
+    namespace = namespace_for_request(request)
+    share = namespace.shares.first
+    if share
+      stream(:keep_open) do |out|
+        streamer = share.content(out)
+        #FIXME ask client for content
+        streamer.got_chunk "THE FILE"
+        streamer.drain_buffer
+        streamer.close
+        nil
+      end
+    else
+      status 404
+    end
 end
 
 get '/file/:filename' do

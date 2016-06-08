@@ -19,6 +19,8 @@ GEM
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
+    rack-test (0.6.3)
+      rack (>= 1.0)
     rainbow (2.1.0)
     rspec (3.4.0)
       rspec-core (~> 3.4.0)
@@ -67,6 +69,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  rack-test
   rspec
   rubocop
   simplecov

@@ -1,13 +1,23 @@
 require 'dlcenter/registry'
 
 RSpec.describe DLCenter::Registry do
+  let(:registry) { DLCenter::Registry.new }
+  let(:client) { DLCenter::Client.new }
+  let(:share) { DLCenter::Share.new client}
   it "cache security context" do
-    registry = DLCenter::Registry.new
 
-    context = registry.context_for("192.168.1.1")
+    context1 = registry.context_for("192.168.1.1")
     context2 = registry.context_for("192.168.1.1")
 
-    expect(context).to eq(context2)
+    expect(context1).to eq(context2)
+  end
+  it "can retrieve the shares by uuid" do
+    namespace = registry.context_for(:foo).namespace_for(:bar)
+    namespace.add_client(client)
+    client.add_share(share)
+    expect(registry).to respond_to(:get_share_by_uuid)
+    expect(registry.get_share_by_uuid(share.uuid)).to eq(share)
+    expect(registry.get_share_by_uuid(:invalid_uuid)).to eq(nil)
   end
 end
 
@@ -53,10 +63,11 @@ RSpec.describe DLCenter::Namespace do
 
   it "can retrieve the shares by uuid" do
     uuid = share.uuid
-    
+
     client.add_share(share)
     namespace.add_client(client)
 
     expect(namespace.get_share_by_uuid(uuid)).to eq(share)
+    expect(namespace.get_share_by_uuid(:invalid_uuid)).to eq(nil)
   end
 end

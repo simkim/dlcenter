@@ -19,8 +19,24 @@
 require 'simplecov'
 SimpleCov.start
 
+require 'rack/test'
+require 'rspec'
+
+ENV['RACK_ENV'] = 'test'
+
+require File.expand_path '../../app.rb', __FILE__
+
+module RSpecMixin
+  include Rack::Test::Methods
+  def app() Sinatra::Application end
+end
+
+# For RSpec 2.x and 3.x
+RSpec.configure { |c| c.include RSpecMixin }
+
 RSpec.configure do |config|
   $LOAD_PATH << File.join(__dir__, '../lib')
+  config.include RSpecMixin
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest
   # assertions if you prefer.
