@@ -10,8 +10,22 @@ module DLCenter
       @clients.push client
     end
 
+    def remove_client(client)
+      @clients.delete client
+      broadcast_available_shares
+    end
+
     def shares
       @clients.flat_map { |client| client.shares.values }
+    end
+
+    def get_shares_json
+      shares.map do |share|
+        {
+          uuid: share.uuid,
+          name: share.name
+        }
+      end
     end
 
     def get_share_by_uuid uuid
@@ -21,7 +35,13 @@ module DLCenter
       end
       return nil
     end
-
+    def broadcast_available_shares
+      shares = get_shares_json
+      puts "broadcast : #{shares}"
+      @clients.each do |client|
+        client.send_msg(:shares, shares: shares)
+      end
+    end
   end
 
   class SecurityContext
@@ -52,13 +72,13 @@ module DLCenter
         end
       end
     end
-    def each_share
-      each_namespace do |namespace|
-        namespace.shares.each do |share|
-          yield share
-        end
-      end
-    end
+    # def each_share
+    #   each_namespace do |namespace|
+    #     namespace.shares.each do |share|
+    #       yield share
+    #     end
+    #   end
+    # end
     def share_count
       count = 0
       each_namespace do |namespace|
@@ -66,9 +86,9 @@ module DLCenter
       end
       count
     end
-    def to_s
-      "Registry (#{share_count} shares)"
-    end
+    # def to_s
+    #   "Registry (#{share_count} shares)"
+    # end
     def get_share_by_uuid(uuid)
       # TODO: create a weak cache for retrieving in O(1) the share
       each_namespace do |namespace|

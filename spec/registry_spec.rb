@@ -3,7 +3,7 @@ require 'dlcenter/registry'
 RSpec.describe DLCenter::Registry do
   let(:registry) { DLCenter::Registry.new }
   let(:client) { DLCenter::Client.new }
-  let(:share) { DLCenter::Share.new client}
+  let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word}
   it "cache security context" do
 
     context1 = registry.context_for("192.168.1.1")
@@ -36,7 +36,7 @@ end
 RSpec.describe DLCenter::Namespace do
   let(:namespace) { DLCenter::Namespace.new :ns1 }
   let(:client) { DLCenter::Client.new }
-  let(:share) { DLCenter::Share.new client}
+  let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word}
 
   it "has a list of clients" do
     expect(namespace).to respond_to(:clients)
@@ -47,6 +47,8 @@ RSpec.describe DLCenter::Namespace do
     expect(namespace).to respond_to(:add_client)
     namespace.add_client(client)
     expect(namespace.clients.length).to eq(1)
+    namespace.remove_client(client)
+    expect(namespace.clients.length).to eq(0)
   end
 
   it "has an empty list of shares" do
@@ -59,6 +61,7 @@ RSpec.describe DLCenter::Namespace do
     namespace.add_client(client)
 
     expect(namespace.shares.length).to eq(1)
+    expect(namespace.get_shares_json).to eq([{uuid: share.uuid, name: share.name}])
   end
 
   it "can retrieve the shares by uuid" do

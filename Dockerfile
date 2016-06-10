@@ -5,4 +5,4 @@ ADD Gemfile .
 RUN bundle install
 ADD . .
 EXPOSE 80
-CMD ["ruby", "app.rb", "-o", "0.0.0.0", "-p", "80"]
+CMD ["rackup", "-o", "0.0.0.0", "-p", "80"]

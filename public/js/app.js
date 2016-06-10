@@ -17,8 +17,7 @@ function setupWS($scope, $timeout) {
   ws.onclose   = function()  {
     console.log("Websocket closed");
     $scope.connected = false;
-    $scope.local_files = [];
-    $scope.files = {};
+    $scope.clients = {};
     $timeout(function () {
       setupWS($scope);
     }, 2000);
@@ -35,10 +34,10 @@ function setupWS($scope, $timeout) {
   window.ws = ws;
 }
 
-function addFilesToStore($scope, files) {
+function addSharesToStore($scope, files) {
   for (var i=0, file; file=files[i]; i++) {
     if (file.size < 5*1024*1024) {
-      addFileToStore($scope, file);
+      addShareToStore($scope, file);
     } else {
       console.error("File size to high : " + file.size);
       alert("File size to high : " + file.size);
@@ -46,33 +45,41 @@ function addFilesToStore($scope, files) {
   }
 }
 
-function addFileToStore($scope, file) {
-  $scope.local_files.push(file);
+function generateUUID() {
+    var d = new Date().getTime();
+    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (d + Math.random()*16)%16 | 0;
+        d = Math.floor(d/16);
+        return (c=='x' ? r : (r&0x3|0x8)).toString(16);
+    });
+    return uuid;
+};
+
+function addShareToStore($scope, file) {
   console.log("add file to store");
   var reader = new FileReader();
   reader.onload = function(e) {
+
+    var uuid = generateUUID();
     console.log("file loaded");
     console.log("size : " + file.size);
     console.log("data size : " + e.target.result.length);
-
-    var fileStorage = JSON.stringify({
+    console.log("uuid : " + uuid);
+    $scope.shares[uuid] = {
         name: file.name,
         size: file.size,
         type: file.type,
         data: btoa(e.target.result)
-    });
+    };
 
     var fileRegister = JSON.stringify({
-        type: "register_file",
+        type: "register_share",
+        uuid: uuid,
         name: file.name,
         content_type: file.type,
         size: file.size
     });
-    try {
-      sessionStorage[file.name] = fileStorage;
-    } catch(e) {
-      alert("File is too big");
-    }
+
     ws.send(fileRegister);
   };
   reader.readAsBinaryString(file);
@@ -108,7 +115,7 @@ function setupFileDrop($scope) {
         e.preventDefault();
         dropZone.style.border = '0';
         var files = e.dataTransfer.files; // Array of all files
-        addFilesToStore($scope, files);
+        addSharesToStore($scope, files);
         return false;
     });
 };
@@ -125,30 +132,34 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
       templateUrl: "files.html",
       controller: function($scope, $timeout) {
 
-        $scope.files = [];
-        $scope.local_files = [];
+        $scope.remote_shares = [];
+        $scope.shares = {}
         $scope.connected = false;
         $scope.dragdrop = true;
         $scope.downloadhost = document.location.protocol + "//" + document.location.host;
 
         function handle_stream(msg) {
-          console.log("Should stream file " + msg.name)
-          var file = JSON.parse(sessionStorage[msg.name]);
-          ws.send(JSON.stringify({
-            type: "chunk",
-            uuid: msg.uuid,
-            chunk: file.data
-          }));
+          console.log("Should stream file " + msg.share + " to stream " + msg.uuid)
+          var share = $scope.shares[msg.share];
+          if (share) {
+            ws.send(JSON.stringify({
+              type: "chunk",
+              uuid: msg.uuid,
+              chunk: share.data
+            }));
+          } else {
+              console.log("cant find share " + msg.share + " in shares")
+          }
         }
 
-        function handle_files(files) {
-            console.log(files);
-            $scope.files = files;
+        function handle_shares(shares) {
+            console.log(shares);
+            $scope.remote_shares = shares;
         };
 
         $scope.handle_msg = function(msg) {
           switch(msg.type) {
-            case "files": handle_files(msg.files); break;
+            case "shares": handle_shares(msg.shares); break;
             case "hello": console.log("Hello : " + msg.text); break;
             case "stream": handle_stream(msg); break;
             default: console.error("Unknown message" + msg.type);
@@ -170,7 +181,8 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
 
         });
         $('input.file-upload').on('change', function () {
-          addFilesToStore($scope, $(this).prop('files'));
+          console.log("input change")
+          addSharesToStore($scope, $(this).prop('files'));
         });
       }
     });

@@ -7,7 +7,7 @@ describe "My Sinatra Application" do
     DLCenter::Client.new
       .tap { |client| dctx_dnamespace.add_client(client) }
   }
-  let(:share) { DLCenter::Share.new(client).tap {|share| client.add_share share } }
+  let(:share) { DLCenter::Share.new(client, name: FFaker::Lorem.word).tap {|share| client.add_share share } }
   let(:fake_content) { FFaker::Lorem.sentence }
 
   it "Get an index page" do
@@ -28,9 +28,10 @@ describe "My Sinatra Application" do
     test = self
     client.define_singleton_method(:send_msg) do |msg, options={}|
         test.expect(@streams.length).to test.eq(1)
-        out = @streams.values[0].out
-        out << test.fake_content
-        out.close
+        stream = @streams.values.first
+        stream.got_chunk(test.fake_content)
+        stream.drain_buffer
+        stream.close
     end
     expect(registry.share_count).to eq(1)
     get "/g"
@@ -41,7 +42,6 @@ describe "My Sinatra Application" do
   it "Can't download if no file" do
     registry
     get "/g"
-    puts last_response.body
     expect(last_response.ok?).to eq(false)
   end
 

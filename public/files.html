@@ -9,7 +9,6 @@
   </div>
   <ul>
     <li>File size is limited to 5MB</li>
-    <li>You must reload the page after adding more than 10MB of files (may differ between browsers)</li>
     <li>Only tested with firefox &amp; chrome</li>
     <li>There is a 60s timeout to download files</li>
     <li>Expect other various random problem ...</li>
@@ -36,19 +35,19 @@
   </div>
 </div>
 
-<div ng-repeat="client in files" class='user-files'>
-  <div ng-if="client.files.length > 0" class="ui raised segments" style="margin-bottom: 12px;">
-    <div class="ui attached top teal header">
-      Files shared
-    </div>
-    <a  ng-href='/file/{{file.name}}'
+<div class='user-files'>
+  <div class="ui attached top teal header">
+    Files shared
+  </div>
+  <div ng-if="remote_shares.length > 0" class="ui raised segments" style="margin-bottom: 12px;">
+    <a  ng-href='/share/{{share.uuid}}'
     target='_blank'
     download
-    ng-repeat="file in client.files"
+    ng-repeat="share in remote_shares"
     class="ui attached segment"
     style="display:block;">
-    <qrcode data="{{downloadhost}}/file/{{file.name}}"></qrcode>
-    <span class="filename">{{file.name}}</span>
+    <qrcode data="{{downloadhost}}/share/{{share.uuid}}"></qrcode>
+    <span class="filename">{{share.name}}</span>
   </a>
 </div>
 </div>
