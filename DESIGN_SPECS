@@ -6,7 +6,4 @@ engine    : EM transfer
 websocket : live synchro
 web       : public, engine entrypoint
 
-- registry qui get by uuid
-- security = pas possible de voir
-- namespace = possible de voir
 - streamer : got_chunk, close(:status)

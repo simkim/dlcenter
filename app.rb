@@ -1,5 +1,6 @@
 require 'sinatra'
 require 'sinatra-websocket'
+require 'sinatra/streaming'
 require 'securerandom'
 require 'json'
 require "base64"
@@ -88,10 +89,10 @@ class FileCenterClient
     {
       name: @name,
       files: @files.map do |name, ref|
-                {
-                  name: name
-                }
-              end
+        {
+          name: name
+        }
+      end
     }
   end
 
@@ -181,7 +182,7 @@ class FileCenter
     @ips = {}
   end
   def get_fcip(ip)
-	puts "Lookup fcip for ip #{ip}"
+    puts "Lookup fcip for ip #{ip}"
     @ips[ip] ||= FileCenterIP.new(ip)
   end
   def add_websocket(ip, ws)
@@ -189,62 +190,62 @@ class FileCenter
   end
 end
 
-require "dlcenter/registry"
+require 'dlcenter'
 
-set :server, 'thin'
-set :center, FileCenter.new
-set :static, true
-set :registry, DLCenter::Registry.new
+module DLCenter
+  class App < Sinatra::Base
+    helpers Sinatra::Streaming
+    set :server, 'thin'
+    set :center, FileCenter.new
+    set :static, true
+    set :registry, DLCenter::Registry.new
 
-get '/ws' do
-  request.websocket do |ws|
-    settings.center.add_websocket(request.ip, ws)
-  end
-end
-
-get '/' do
-  puts "Visitor from #{request.ip}"
-  File.read(settings.public_folder+'/index.html')
-end
-
-def namespace_for_request(request)
-  settings.registry.context_for(request.ip).namespace_for(:default)
-end
-
-get '/g' do
-    namespace = namespace_for_request(request)
-    share = namespace.shares.first
-    if share
-      stream(:keep_open) do |out|
-        streamer = share.content(out)
-        #FIXME ask client for content
-        streamer.got_chunk "THE FILE"
-        streamer.drain_buffer
-        streamer.close
-        nil
+    get '/ws' do
+      request.websocket do |ws|
+        settings.center.add_websocket(request.ip, ws)
       end
-    else
-      status 404
     end
-end
 
-get '/file/:filename' do
-  name = params[:filename]
-  puts "Lookup file #{name}"
-  fcip = settings.center.get_fcip(request.ip)
-  if fcip.has_file(name)
-    file = fcip.get_file(name)
-    headers \
-      "Cache-Control" => "no-cache, private",
-      "Pragma"        => "no-cache",
-      "Content-type"  => "#{file.content_type}",
-      "Content-Disposition" => "attachment; filename=\"#{name}\""
-    stream(:keep_open) do |out|
-      puts "Stream file with content_type : #{file.content_type}"
-      file.stream_file(out)
-      nil
+    get '/' do
+      File.read(settings.public_folder+'/index.html')
     end
-  else
-    [404, "Not found"]
+
+    def namespace_for_request(request)
+      settings.registry.context_for(request.ip).namespace_for(:default)
+    end
+
+    get '/g' do
+      namespace = namespace_for_request(request)
+      share = namespace.shares.first
+      if share
+        stream(:keep_open) do |out|
+          stream = share.content(out)
+          nil
+        end
+      else
+        status 404
+      end
+    end
+
+    get '/file/:filename' do
+      name = params[:filename]
+      puts "Lookup file #{name}"
+      fcip = settings.center.get_fcip(request.ip)
+      if fcip.has_file(name)
+        file = fcip.get_file(name)
+        headers \
+        "Cache-Control" => "no-cache, private",
+        "Pragma"        => "no-cache",
+        "Content-type"  => "#{file.content_type}",
+        "Content-Disposition" => "attachment; filename=\"#{name}\""
+        stream(:keep_open) do |out|
+          puts "Stream file with content_type : #{file.content_type}"
+          file.stream_file(out)
+          nil
+        end
+      else
+        [404, "Not found"]
+      end
+    end
   end
 end

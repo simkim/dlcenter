@@ -1,7 +1,8 @@
 module DLCenter
   class Streamer
-    attr_accessor :share, :buffer
+    attr_reader :share, :buffer, :uuid, :out
     def initialize(share, out)
+      @uuid = SecureRandom.uuid
       @share = share
       @out = out
       @buffer = ""

@@ -7,6 +7,12 @@ RSpec.describe DLCenter::Streamer do
   let(:output) { StringIO.new }
   let(:streamer) { DLCenter::Streamer.new share, output}
 
+  it "has an uuid" do
+    expect(share).to respond_to(:uuid)
+    expect(share.uuid).to be_instance_of(String)
+    expect(share.uuid.length).to eq(36)
+  end
+
   it "has a share" do
     expect(streamer).to respond_to(:share)
   end

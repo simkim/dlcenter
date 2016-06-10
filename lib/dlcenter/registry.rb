@@ -37,18 +37,43 @@ module DLCenter
 
   class Registry
     def initialize
+      reset
+    end
+    def reset
       @security_contexts = {}
     end
     def context_for(security_token)
       @security_contexts[security_token] ||= SecurityContext.new(security_token)
     end
-    def get_share_by_uuid(uuid)
-      # TODO: create a weak cache for retrieving in O(1) the share
+    def each_namespace
       @security_contexts.each_value do |security_context|
         security_context.namespaces.each_value do |namespace|
-          share = namespace.get_share_by_uuid(uuid)
-          return share if share
+          yield namespace
         end
+      end
+    end
+    def each_share
+      each_namespace do |namespace|
+        namespace.shares.each do |share|
+          yield share
+        end
+      end
+    end
+    def share_count
+      count = 0
+      each_namespace do |namespace|
+        count += namespace.shares.length
+      end
+      count
+    end
+    def to_s
+      "Registry (#{share_count} shares)"
+    end
+    def get_share_by_uuid(uuid)
+      # TODO: create a weak cache for retrieving in O(1) the share
+      each_namespace do |namespace|
+        share = namespace.get_share_by_uuid(uuid)
+        return share if share
       end
       return nil
     end

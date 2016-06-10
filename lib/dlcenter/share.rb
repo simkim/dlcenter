@@ -14,7 +14,9 @@ module DLCenter
     end
 
     def content(out)
-      Streamer.new(self, out)
+      Streamer.new(self, out).tap do |stream|
+        client.ask_for_stream(stream)
+      end
     end
 
     def size=(size)
