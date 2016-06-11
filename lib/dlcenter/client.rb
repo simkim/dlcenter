@@ -91,11 +91,17 @@ module DLCenter
       if stream
         puts "Got chunk for stream #{uuid}"
         stream.got_chunk(Base64.decode64(chunk))
-        stream.drain_buffer
-        stream.close
+        begin
+          stream.drain_buffer
+          stream.close
+          return true
+        rescue IOError
+          puts "ERROR: can't send data to client"
+        end
       else
         puts "Unknown stream #{uuid}"
       end
+      return false
     end
 
     def handle_ws_msg(msg)
