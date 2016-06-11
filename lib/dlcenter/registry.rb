@@ -37,7 +37,6 @@ module DLCenter
     end
     def broadcast_available_shares
       shares = get_shares_json
-      puts "broadcast : #{shares}"
       @clients.each do |client|
         client.send_msg(:shares, shares: shares)
       end

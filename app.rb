@@ -22,7 +22,6 @@ module DLCenter
     end
 
     get '/' do
-      puts "got /"
       File.read(settings.public_folder+'/index.html')
     end
 
