@@ -44,12 +44,14 @@ module DLCenter
         self.send_msg(:shares, shares: @namespace.get_shares_json)
       end
       ws.onmessage do |tmsg|
+
         begin
           msg = JSON.parse(tmsg, symbolize_names: true)
         rescue
           puts "Can't parse JSON message"
         end
         self.handle_ws_msg(msg)
+
       end
       ws.onclose do
         puts "WS closed"
@@ -86,14 +88,17 @@ module DLCenter
 
     def handle_chunk(msg)
       uuid = msg[:uuid]
-      chunk = msg[:chunk]
+      encoded_chunk = msg[:chunk]
       stream = @streams[uuid]
       if stream
-        puts "Got chunk for stream #{uuid}"
-        stream.got_chunk(Base64.decode64(chunk))
+        chunk = Base64.decode64(encoded_chunk)
+        # puts "Got chunk of size #{chunk.length} for stream #{uuid}"
+        stream.got_chunk(chunk)
         begin
           stream.drain_buffer
-          stream.close
+          if msg[:close] then
+            stream.close
+          end
           return true
         rescue IOError
           puts "ERROR: can't send data to client"

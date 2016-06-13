@@ -42,7 +42,7 @@ function setupWS($scope, $timeout) {
 
 function addSharesToStore($scope, files) {
   for (var i=0, file; file=files[i]; i++) {
-    if (file.size < 5*1024*1024) {
+    if (file.size < 5000*1024*1024) {
       addShareToStore($scope, file);
     } else {
       console.error("File size to high : " + file.size);
@@ -63,32 +63,68 @@ function generateUUID() {
 
 function addShareToStore($scope, file) {
   console.log("add file to store");
-  var reader = new FileReader();
-  reader.onload = function(e) {
+  var uuid = generateUUID();
+  console.log("size : " + file.size);
+  console.log("uuid : " + uuid);
 
-    var uuid = generateUUID();
-    console.log("file loaded");
-    console.log("size : " + file.size);
-    console.log("data size : " + e.target.result.length);
-    console.log("uuid : " + uuid);
-    $scope.shares[uuid] = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        data: btoa(e.target.result)
-    };
-
-    var fileRegister = JSON.stringify({
-        type: "register_share",
-        uuid: uuid,
-        name: file.name,
-        content_type: file.type,
-        size: file.size
-    });
-
-    ws.send(fileRegister);
+  $scope.shares[uuid] = {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file: file,
   };
-  reader.readAsBinaryString(file);
+
+  var fileRegister = JSON.stringify({
+      type: "register_share",
+      uuid: uuid,
+      name: file.name,
+      content_type: file.type,
+      size: file.size
+  });
+  ws.send(fileRegister);
+};
+
+function streamChunk(share, stream_uuid, start, length, cb) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      // console.log("chunk loaded " + stream_uuid + " ("+start+","+length+")");
+      if (length == 0) {
+        console.error("can't stream chunk of length 0");
+        return;
+      }
+      if (length != e.target.result.length) {
+        console.error("Ask for " + length + " but got ", e.target.result.length);
+        return;
+      }
+      var close = (start+length) == share.file.size;
+      ws.send(JSON.stringify({
+        type: "chunk",
+        uuid: stream_uuid,
+        close: close,
+        chunk: btoa(e.target.result)
+      }));
+      if (cb)
+        cb(close);
+    };
+    var blob = share.file.slice(start, start+length);
+    reader.readAsBinaryString(blob);
+};
+
+function streamShare(share, stream_uuid, cb) {
+  console.log("stream share " + stream_uuid + " ("+share.size+")");
+  var position = 0;
+  function chunkStreamed(done) {
+    if (done) {
+      if (cb)
+        cb();
+      return;
+    }
+    var start = position;
+    var length = Math.min(1024000, share.size-position);
+    position+=length;
+    streamChunk(share, stream_uuid, start, length, chunkStreamed);
+  }
+  chunkStreamed(false);
 };
 
 function setupFileDrop($scope) {
@@ -148,11 +184,7 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
           console.log("Should stream file " + msg.share + " to stream " + msg.uuid)
           var share = $scope.shares[msg.share];
           if (share) {
-            ws.send(JSON.stringify({
-              type: "chunk",
-              uuid: msg.uuid,
-              chunk: share.data
-            }));
+            streamShare(share, msg.uuid);
           } else {
               console.log("cant find share " + msg.share + " in shares")
           }

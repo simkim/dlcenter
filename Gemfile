@@ -5,6 +5,7 @@ gem 'sinatra'
 gem 'sinatra-contrib'
 gem 'sinatra-websocket'
 gem 'uuid'
+gem 'ruby-prof'
 
 
 group :test do

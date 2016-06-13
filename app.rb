@@ -37,6 +37,7 @@ module DLCenter
           "Cache-Control" => "no-cache, private",
           "Pragma"        => "no-cache",
           "Content-type"  => "#{share.content_type}",
+          "Content-Length" => "#{share.size}",
           "Content-Disposition" => "attachment; filename=\"#{share.name}\""
         stream(:keep_open) do |out|
           share.content(out)
@@ -56,6 +57,7 @@ module DLCenter
         "Cache-Control" => "no-cache, private",
         "Pragma"        => "no-cache",
         "Content-type"  => "#{share.content_type}",
+        "Content-Length" => "#{share.size}",
         "Content-Disposition" => "attachment; filename=\"#{share.name}\""
 
         stream(:keep_open) do |out|

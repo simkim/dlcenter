@@ -11,11 +11,16 @@ module DLCenter
       @buffer += chunk
     end
     def drain_buffer
-      @out << @buffer
+      buffer = @buffer
       @buffer = ""
+      EM.next_tick {
+        @out << buffer
+      }
     end
     def close
-      @out.close
+      EM.next_tick {
+        @out.close
+      }
     end
   end
 end
