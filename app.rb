@@ -26,7 +26,8 @@ module DLCenter
     end
 
     def namespace_for_request(request)
-      settings.registry.context_for(request.ip).namespace_for(:default)
+      ctx_key = ENV.fetch("DLCENTER_COMMON_CONTEXT") ? :default : request.ip
+      settings.registry.context_for(ctx_key).namespace_for(:default)
     end
 
     get '/g' do
