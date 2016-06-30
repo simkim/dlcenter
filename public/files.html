@@ -1,7 +1,10 @@
 <h1 class="ui teal header" style="margin-top: 32px;">Transfer files between nearby devices</h1>
+<!--
 <div class="ui blue message">
   Ever wanted to transfer a file from your computer to your tablet ? Without installing an app, without typing password, without trying to make airdrop work. This service is for YOU.
 </div>
+-->
+<!--
 <div class="ui warning message">
   <i class="close icon"></i>
   <div class="header">
@@ -14,6 +17,7 @@
     <li>Expect other various random problem ...</li>
   </ul>
 </div>
+-->
 
 <input type="file" class='file-upload'/>
 <div>
@@ -35,10 +39,7 @@
   </div>
 </div>
 
-<div class='user-files'>
-  <div class="ui attached top teal header">
-    Files shared
-  </div>
+<div class='user-files' ng-show="remote_shares.length > 0">
   <div ng-if="remote_shares.length > 0" class="ui raised segments" style="margin-bottom: 12px;">
     <a  ng-href='/share/{{share.uuid}}'
     target='_blank'
