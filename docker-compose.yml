@@ -2,6 +2,6 @@ app:
   restart: unless-stopped
   build: .
   environment:
-    VIRTUAL_HOST: share.localhost,dl.center
+    VIRTUAL_HOST: dl.localhost,dl.center
     LETSENCRYPT_EMAIL: letsencrypt@simkim.net
     LETSENCRYPT_HOST: dl.center
