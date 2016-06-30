@@ -114,6 +114,7 @@ module DLCenter
       case msg[:type]
       when 'register_share' then handle_register_share(msg)
       when 'chunk' then handle_chunk(msg)
+      when 'ping' then true
       else puts "Unkown msg : #{msg}"
       end
     end
