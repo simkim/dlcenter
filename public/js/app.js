@@ -6,7 +6,7 @@ if (window.File && window.FileReader && window.FileList && window.Blob) {
   alert('The File APIs are not fully supported in this browser.');
 }
 
-function setupWS($scope, $timeout) {
+function setupWS($scope, $timeout, $interval) {
   var protocol = "";
   if (document.location.protocol === "https:") {
     protocol = "wss:";
@@ -178,7 +178,7 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
     .state('home', {
         url: "/",
         templateUrl: "files.html",
-        controller: function($scope, $timeout) {
+        controller: function($scope, $timeout, $interval) {
 
             $scope.remote_shares = [];
             $scope.shares = {}
@@ -210,7 +210,7 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
                 }
             };
 
-            setupWS($scope, $timeout);
+            setupWS($scope, $timeout, $interval);
             setupFileDrop($scope);
             $('.message .close')
             .on('click', function() {
