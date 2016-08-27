@@ -14,7 +14,11 @@ module DLCenter
       buffer = @buffer
       @buffer = ""
       EM.next_tick {
-        @out << buffer
+        begin
+            @out << buffer
+        rescue IOError
+            puts "error on out stream"
+        end
       }
     end
     def close
