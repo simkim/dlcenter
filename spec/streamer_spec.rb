@@ -2,7 +2,7 @@ require 'stringio'
 require 'dlcenter/streamer'
 
 RSpec.describe DLCenter::Streamer do
-  let(:client) { DLCenter::Client.new }
+  let(:client) { DLCenter::Client.new nil }
   let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word }
   let(:output) { StringIO.new }
   let(:streamer) { DLCenter::Streamer.new share, output}

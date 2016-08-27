@@ -3,7 +3,9 @@ require 'base64'
 module DLCenter
   class Client
     attr_reader :shares
-    def initialize
+    attr_accessor :namespace
+    def initialize namespace
+      @namespace = namespace
       @shares = {}
       @streams = {}
     end
@@ -33,11 +35,43 @@ module DLCenter
     end
   end
 
+  class IOClient < Client
+    def initialize namespace, io_in, io_out, options = {}
+        super(namespace)
+        @io_in = io_in
+        @io_out = io_out
+        share = Share.new(self, {
+          uuid: "123",
+          content_type: options[:content_type],
+          size: options[:size],
+          name: options[:filename]
+          })
+        self.add_share(share)
+    end
+    def flush_io(uuid)
+      stream = @streams[uuid]
+      while (data = @io_in.read 1024*1024)
+        stream.got_chunk(data)
+        stream.drain_buffer
+      end
+      stream.close
+      @io_out.close
+      @namespace.remove_client(self)
+    end
+    def send_msg(msg, params={})
+      case msg
+      when :shares then nil
+      when :hello  then nil
+      when :stream then flush_io(params[:uuid])
+      else
+        raise "Invalid msg type #{msg} with params #{params}"
+      end
+    end
+  end
+
   class WSClient < Client
-    attr_accessor :namespace
-    def initialize ws
-      super()
-      @namespace = nil
+    def initialize namespace, ws
+      super(namespace)
       @ws = ws
       ws.onopen do
         self.send_msg(:hello, text: "Hello World!")

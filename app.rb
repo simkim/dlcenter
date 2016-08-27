@@ -14,9 +14,16 @@ module DLCenter
 
     get '/ws' do
       request.websocket do |ws|
-        client = WSClient.new ws
         namespace = namespace_for_request(request)
-        client.namespace = namespace
+        client = WSClient.new namespace, ws
+        namespace.add_client client
+      end
+    end
+
+    post '/p/:filename' do
+      stream(:keep_open) do |out|
+        namespace = namespace_for_request(request)
+        client = IOClient.new namespace, request.env['data.input'], out, filename: params[:filename], size: request.env["CONTENT_LENGTH"], content_type: request.env["CONTENT_TYPE"]
         namespace.add_client client
       end
     end
@@ -34,12 +41,14 @@ module DLCenter
       namespace = namespace_for_request(request)
       share = namespace.shares.first
       if share
-        headers \
+        options = {
           "Cache-Control" => "no-cache, private",
           "Pragma"        => "no-cache",
-          "Content-type"  => "#{share.content_type}",
-          "Content-Length" => "#{share.size}",
+          "Content-type"  => "#{share.content_type || "octet/stream"}",
           "Content-Disposition" => "attachment; filename=\"#{share.name}\""
+        }
+        options["Content-Length"] = "#{share.size}" unless share.size.nil?
+        headers options
         stream(:keep_open) do |out|
           share.content(out)
           nil

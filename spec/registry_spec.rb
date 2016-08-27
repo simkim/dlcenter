@@ -2,7 +2,7 @@ require 'dlcenter/registry'
 
 RSpec.describe DLCenter::Registry do
   let(:registry) { DLCenter::Registry.new }
-  let(:client) { DLCenter::Client.new }
+  let(:client) { DLCenter::Client.new nil }
   let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word}
   it "cache security context" do
 
@@ -35,7 +35,7 @@ end
 
 RSpec.describe DLCenter::Namespace do
   let(:namespace) { DLCenter::Namespace.new :ns1 }
-  let(:client) { DLCenter::Client.new }
+  let(:client) { DLCenter::Client.new nil }
   let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word}
 
   it "has a list of clients" do

@@ -2,7 +2,7 @@ require 'dlcenter/share'
 require 'dlcenter/client'
 
 RSpec.describe DLCenter::Share do
-  let(:client) { DLCenter::Client.new }
+  let(:client) { DLCenter::Client.new nil}
 
   it "has an uuid" do
     share = DLCenter::Share.new client, name: FFaker::Lorem.word

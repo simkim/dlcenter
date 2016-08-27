@@ -23,7 +23,7 @@ module DLCenter
     end
 
     def size=(size)
-      @size = size.to_i
+      @size = size.to_i unless size.nil?
     end
   end
 end
