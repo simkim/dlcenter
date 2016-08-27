@@ -41,18 +41,22 @@ module DLCenter
         @io_in = io_in
         @io_out = io_out
         share = Share.new(self, {
-          uuid: "123",
           content_type: options[:content_type],
           size: options[:size],
-          name: options[:filename]
+          name: options[:filename],
+          oneshot: true
           })
         self.add_share(share)
     end
     def flush_io(uuid)
       stream = @streams[uuid]
-      while (data = @io_in.read 1024*1024)
-        stream.got_chunk(data)
-        stream.drain_buffer
+      begin
+        while (data = @io_in.read 1024*1024)
+          stream.got_chunk(data)
+          stream.drain_buffer
+        end
+      rescue IOError => e
+        puts "Error while flushing #{e}"
       end
       stream.close
       @io_out.close

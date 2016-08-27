@@ -23,7 +23,10 @@ module DLCenter
       shares.map do |share|
         {
           uuid: share.uuid,
-          name: share.name
+          name: share.name,
+          size: share.size,
+          oneshot: share.oneshot,
+          content_type: share.content_type
         }
       end
     end

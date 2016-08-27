@@ -25,6 +25,7 @@ module DLCenter
         namespace = namespace_for_request(request)
         client = IOClient.new namespace, request.env['data.input'], out, filename: params[:filename], size: request.env["CONTENT_LENGTH"], content_type: request.env["CONTENT_TYPE"]
         namespace.add_client client
+        namespace.broadcast_available_shares
       end
     end
 
