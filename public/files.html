@@ -2,51 +2,72 @@
 <div class="ui blue message">
   Ever wanted to transfer a file from your computer to your tablet ? Without installing an app, without typing password, without trying to make airdrop work. This service is for YOU.
 </div>
-<!--
-<div class="ui warning message">
-  <i class="close icon"></i>
-  <div class="header">
-    This service is still in a proof of concept stage, temporary limitations applies. Please send comment to contact at dl.center
-  </div>
-  <ul>
-    <li>File size is limited to 5MB</li>
-    <li>Only tested with firefox &amp; chrome</li>
-    <li>There is a 60s timeout to download files</li>
-    <li>Expect other various random problem ...</li>
-  </ul>
-</div>
--->
 
 <input type="file" class='file-upload'/>
-<div>
-  <div class="ui tablet stackable steps">
-    <div class="step file-upload" ng-class="{active: local_files.length == 0}">
-      <i class='add icon'></i>
-      <div class="content">
-        <div class="title">Upload your file</div>
-        <div class="description">Stay here</div>
+
+<div class="ui cards">
+
+  <div class="card file-upload">
+    <div class="content">
+      <div class="header">
+        Upload a file
+      </div>
+      <div class="description">
+        You can also drag and drop from your computer here.
       </div>
     </div>
-    <div class="step" ng-class="{active: local_files.length > 0}">
-      <i class='download icon'></i>
-      <div class="content">
-        <div class="title">Open <a href='#' class='ui teal' target='_blank'>dl.center</a> on another device using the same internet connection</div>
-        <div class="description">Download your file</div>
+    <div class="extra content">
+      <div class="ui two buttons">
+        <div class="ui green button"><i class='plus icon'/>Select file</div>
+      </div>
+    </div>
+  </div>
+  <div class="card text-upload">
+    <div class="content">
+      <div class="header">
+        Upload some text (beta)
+      </div>
+      <div class="description">
+        <textarea name="text" rows="4" cols="25"></textarea>
+      </div>
+    </div>
+    <div class="extra content">
+      <div class="ui two buttons">
+        <div class="ui green button" id='content-share'><i class='plus icon'/>Share</div>
+      </div>
+    </div>
+  </div>
+  <div ng-repeat="share in remote_shares" class="card">
+    <div class="content">
+      <div class="header">
+        {{share.name}}
+      </div>
+      <div class="description">
+        <a onclick='javascript:$(".ui.modal").modal("show");return false;'>
+            <i class='photo icon'></i> Show qrcode
+        </a>
+      </div>
+    </div>
+    <div class="extra content">
+      <div class="ui two buttons">
+        <a class='ui blue button' download target='_blank' ng-href="{{downloadhost}}/share/{{share.uuid}}"><i class='download icon'/>Download</a>
+      </div>
+    </div>
+    <div class='ui modal'>
+      <div class="header">{{share.name}}</div>
+      <div class="image content">
+        <qrcode data="{{downloadhost}}/share/{{share.uuid}}" error-correction-level="M" size="200"></qrcode>
+      </div>
+      <div class="description">
+        <p>{{share.size}}</p>
+      </div>
+      <div class="actions">
+        <div class="ui approve button">Close</div>
       </div>
     </div>
   </div>
 </div>
-
-<div class='user-files' ng-show="remote_shares.length > 0">
-  <div ng-if="remote_shares.length > 0" class="ui raised segments" style="margin-bottom: 12px;">
-    <a  ng-href='/share/{{share.uuid}}'
-    target='_blank'
-    download
-    ng-repeat="share in remote_shares"
-    class="ui attached segment"
-    style="display:block;">
-    <qrcode data="{{downloadhost}}/share/{{share.uuid}}"></qrcode>
-    <span class="filename">{{share.name}}</span>
-  </a>
-</div>
+<div class="ui piled segment">
+      <h4 class="ui header">Howto use : </h4>
+      <p>Upload a file. Open <a target='_blank' href='https://dl.center'>dl.center</a> on another device using the same internet connection. Click on download !</p>
 </div>

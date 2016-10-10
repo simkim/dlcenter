@@ -67,6 +67,28 @@ function generateUUID() {
     return uuid;
 };
 
+function addContentShareToStore($scope, content) {
+    console.log("add content to store");
+    var uuid = generateUUID();
+    console.log("size : " + content.length);
+    console.log("uuid : " + uuid);
+
+    $scope.shares[uuid] = {
+        name: "clipboard",
+        size: content.length,
+        type: "text/plain",
+        content: content,
+    };
+
+    var fileRegister = JSON.stringify({
+        type: "register_share",
+        uuid: uuid,
+        name: "clipboard",
+        content_type: "text/plain",
+        size: content.length
+    });
+    ws.send(fileRegister);
+};
 function addShareToStore($scope, file) {
     console.log("add file to store");
     var uuid = generateUUID();
@@ -118,19 +140,28 @@ function streamChunk(share, stream_uuid, start, length, cb) {
 
 function streamShare(share, stream_uuid, cb) {
     console.log("stream share " + stream_uuid + " ("+share.size+")");
-    var position = 0;
-    function chunkStreamed(done) {
-        if (done) {
-            if (cb)
-                cb();
-            return;
+    if (share.content) {
+        ws.send(JSON.stringify({
+            type: "chunk",
+            uuid: stream_uuid,
+            close: true,
+            chunk: btoa(share.content)
+        }));
+    } else {
+        var position = 0;
+        function chunkStreamed(done) {
+            if (done) {
+                if (cb)
+                    cb();
+                return;
+            }
+            var start = position;
+            var length = Math.min(1024000, share.size-position);
+            position+=length;
+            streamChunk(share, stream_uuid, start, length, chunkStreamed);
         }
-        var start = position;
-        var length = Math.min(1024000, share.size-position);
-        position+=length;
-        streamChunk(share, stream_uuid, start, length, chunkStreamed);
+        chunkStreamed(false);
     }
-    chunkStreamed(false);
 };
 
 function setupFileDrop($scope) {
@@ -222,6 +253,14 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
             });
             $('div.file-upload').on('click', function () {
                 $('input.file-upload').val(null).click();
+
+            });
+            $('#content-share').on('click', function() {
+                var text = $('textarea').val();
+                if (text.length > 0) {
+                    addContentShareToStore($scope, text);
+                    $('textarea').val('');
+                }
 
             });
             $('input.file-upload').on('change', function () {
