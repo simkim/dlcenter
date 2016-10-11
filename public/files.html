@@ -1,11 +1,11 @@
-<h1 class="ui teal header" style="margin-top: 32px;">Transfer files between nearby devices</h1>
-<div class="ui blue message">
+<h1 class="ui teal top attached header" style="margin-top: 32px;">Transfer files between nearby devices</h1>
+<div class="ui teal attached segment">
   Ever wanted to transfer a file from your computer to your tablet ? Without installing an app, without typing password, without trying to make airdrop work. This service is for YOU.
 </div>
 
 <input type="file" class='file-upload'/>
 
-<div class="ui cards">
+<div class="ui three stackable cards">
 
   <div class="card file-upload">
     <div class="content">
@@ -28,7 +28,7 @@
         Upload some text (beta)
       </div>
       <div class="description">
-        <textarea name="text" rows="4" cols="25"></textarea>
+        <textarea name="text" rows="4" width="90%"></textarea>
       </div>
     </div>
     <div class="extra content">
@@ -42,8 +42,12 @@
       <div class="header">
         {{share.name}}
       </div>
+      <div class="meta">
+        {{filesize(share.size)}}
+      </div>
       <div class="description">
-        <a onclick='javascript:$(".ui.modal").modal("show");return false;'>
+        <pre>{{share.content}}</pre>
+        <a onclick='javascript:$(this).closest(".card").find(".modal").modal("show");return false;'>
             <i class='photo icon'></i> Show qrcode
         </a>
       </div>
@@ -56,10 +60,11 @@
     <div class='ui modal'>
       <div class="header">{{share.name}}</div>
       <div class="image content">
-        <qrcode data="{{downloadhost}}/share/{{share.uuid}}" error-correction-level="M" size="200"></qrcode>
+        <qrcode ng-if="!share.content" data="{{downloadhost}}/share/{{share.uuid}}" error-correction-level="M" size="200"></qrcode>
+        <qrcode ng-if="share.content" data="{{share.content}}" error-correction-level="M" size="200"></qrcode>
       </div>
       <div class="description">
-        <p>{{share.size}}</p>
+        <pre>{{share.content}}</pre>
       </div>
       <div class="actions">
         <div class="ui approve button">Close</div>

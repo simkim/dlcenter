@@ -32,6 +32,11 @@ RSpec.describe DLCenter::Share do
     expect(share.size).to eq(4444)
   end
 
+  it "has an inline_content" do
+    share = DLCenter::Share.new client, name: FFaker::Lorem.word, content: "foobar"
+    expect(share.inline_content).to eq("foobar")
+  end
+
   it "has a client" do
     share = DLCenter::Share.new client, name: FFaker::Lorem.word
     expect(share).to respond_to(:client)

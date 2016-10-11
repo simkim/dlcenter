@@ -50,7 +50,7 @@ function addSharesToStore($scope, files) {
     for (var i=0, file; file=files[i]; i++) {
         if (file.size < 5000*1024*1024) {
             addShareToStore($scope, file);
-        } else {
+        } else {
             console.error("File size to high : " + file.size);
             alert("File size to high : " + file.size);
         }
@@ -84,6 +84,7 @@ function addContentShareToStore($scope, content) {
         type: "register_share",
         uuid: uuid,
         name: "clipboard",
+        content: content,
         content_type: "text/plain",
         size: content.length
     });
@@ -216,7 +217,7 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
             $scope.connected = false;
             $scope.dragdrop = true;
             $scope.downloadhost = document.location.protocol + "//" + document.location.host;
-
+            $scope.filesize = filesize;
             function handle_stream(msg) {
                 console.log("Should stream file " + msg.share + " to stream " + msg.uuid)
                 var share = $scope.shares[msg.share];

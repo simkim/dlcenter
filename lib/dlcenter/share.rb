@@ -2,7 +2,7 @@ require 'securerandom'
 
 module DLCenter
   class Share
-    attr_reader :uuid, :client, :oneshot
+    attr_reader :uuid, :client, :oneshot, :inline_content
     attr_accessor :content_type, :name, :size
 
     def initialize client, options = {}
@@ -13,6 +13,7 @@ module DLCenter
       self.content_type = options[:content_type]
       self.name = options[:name]
       self.size = options[:size]
+      @inline_content = options[:content]
       @oneshot = options[:oneshot]
       raise "Must have a name" unless self.name
     end

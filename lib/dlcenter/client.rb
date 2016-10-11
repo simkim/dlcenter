@@ -18,6 +18,7 @@ module DLCenter
           uuid: share.uuid,
           name: share.name,
           content_type: share.content_type,
+          content: share.inline_content,
           size: share.size
         }
       end

@@ -36,7 +36,7 @@ end
 RSpec.describe DLCenter::Namespace do
   let(:namespace) { DLCenter::Namespace.new :ns1 }
   let(:client) { DLCenter::Client.new nil }
-  let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word}
+  let(:share) { DLCenter::Share.new client, name: FFaker::Lorem.word, content: "foobar"}
 
   it "has a list of clients" do
     expect(namespace).to respond_to(:clients)
@@ -61,7 +61,7 @@ RSpec.describe DLCenter::Namespace do
     namespace.add_client(client)
 
     expect(namespace.shares.length).to eq(1)
-    expect(namespace.get_shares_json).to eq([{uuid: share.uuid, name: share.name}])
+    expect(namespace.get_shares_json).to eq([{size: nil, content_type: nil, oneshot: nil, uuid: share.uuid, name: share.name, content: "foobar"}])
   end
 
   it "can retrieve the shares by uuid" do
