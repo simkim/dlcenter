@@ -245,7 +245,9 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
                     default: console.error("Unknown message" + msg.type);
                 }
             };
-
+            $scope.open_modal = function(uuid) {
+              $("#modal-"+uuid).modal('show');
+            }
             setupWS($scope, $timeout, $interval);
             setupFileDrop($scope);
             $('.message .close')

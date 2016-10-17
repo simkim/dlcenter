@@ -50,7 +50,7 @@
       </div>
       <div class="description">
         <pre>{{share.content}}</pre>
-        <a onclick='javascript:$(this).closest(".card").find(".modal").modal("show");return false;'>
+        <a ng-click='open_modal(share.uuid)'>
             <i class='photo icon'></i> Show qrcode
         </a>
       </div>
@@ -60,7 +60,7 @@
         <a class='ui blue button' download target='_blank' ng-href="{{downloadhost}}/share/{{share.uuid}}"><i class='download icon'/>Download</a>
       </div>
     </div>
-    <div class='ui modal'>
+    <div class='ui modal' id="modal-{{share.uuid}}">
       <div class="header">{{share.name}}</div>
       <div class="image content">
         <qrcode ng-if="!share.content" data="{{downloadhost}}/share/{{share.uuid}}" error-correction-level="M" size="200"></qrcode>
