@@ -28,3 +28,9 @@ qrcode canvas {
   padding-left: 32px;
   font-size: 1.2rem;
 }
+dropZone {
+  border: 3px solid transparent;
+}
+textarea {
+  width: 100%;
+}

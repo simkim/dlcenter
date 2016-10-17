@@ -185,7 +185,7 @@ function setupFileDrop($scope) {
     dropZone.addEventListener('dragleave', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        dropZone.style.border = '0';
+        dropZone.style.border = '3px dashed tranparent';
         return false;
     });
 
