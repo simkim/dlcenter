@@ -195,7 +195,11 @@ function setupFileDrop($scope) {
         e.preventDefault();
         dropZone.style.border = '0';
         var files = e.dataTransfer.files; // Array of all files
-        addSharesToStore($scope, files);
+        if (files.length > 0) {
+          addSharesToStore($scope, files);
+        } else {
+          addContentShareToStore($scope, e.dataTransfer.getData("Text"))
+        }
         return false;
     });
 };
