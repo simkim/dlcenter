@@ -11,6 +11,11 @@
 <div ng-if="remote_shares.length > 1" class='ui center aligned container'>
   <a ng-href="{{downloadhost}}/all" class='ui teal button'>Download all</a>
 </div>
+
+<div ng-if="!connected" class='ui center aligned red message'>
+  Disconnected, trying to reconnect
+</div>
+
 <div class="ui three stackable cards">
 
   <div class="card file-upload">

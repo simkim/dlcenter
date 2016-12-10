@@ -27,14 +27,23 @@ function setupWS($scope, $timeout, $interval) {
 
   ws.onclose   = function()  {
       console.log("Websocket closed");
-      $scope.connected = false;
-      $scope.clients = {};
-      $interval.cancel($scope.ping);
-      $timeout(function () {
-          setupWS($scope);
-      }, 2000);
+      if ($scope.connected) {
+        $scope.connected = false;
+        $scope.clients = {};
+        $interval.cancel($scope.ping);
+        $timeout(function () {
+            setupWS($scope, $timeout, $interval);
+        }, 2000);
+      }
   };
-
+  ws.onerror = function() {
+    console.log("Websocket error");
+    $scope.connected = false;
+    $scope.clients = {};
+    $timeout(function () {
+        setupWS($scope, $timeout, $interval);
+    }, 10000);
+  }
   ws.onmessage = function(m) {
       console.log('websocket message: ' +  m.data);
       var msg = JSON.parse(m.data);
