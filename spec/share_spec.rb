@@ -41,4 +41,14 @@ RSpec.describe DLCenter::Share do
     share = DLCenter::Share.new client, name: FFaker::Lorem.word
     expect(share).to respond_to(:client)
   end
+
+  it "can stream shares" do
+    share = DLCenter::Share.new client, name: FFaker::Lorem.word
+    out = StringIO.new
+    DLCenter::Share.content([share], out)
+    out.rewind
+    IO.write("test.zip", out.read)
+    expect(out.length).to be > 0
+    puts out.length
+  end
 end

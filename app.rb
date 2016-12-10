@@ -58,7 +58,25 @@ module DLCenter
         status 404
       end
     end
-
+    get '/all' do
+      namespace = namespace_for_request(request)
+      shares = namespace.shares
+      if shares.size > 0
+        options = {
+          "Cache-Control" => "no-cache, private",
+          "Pragma"        => "no-cache",
+          "Content-type"  => "application/zip",
+          "Content-Disposition" => "attachment; filename=\"dlcenter-pack.zip\""
+        }
+        headers options
+        stream(:keep_open) do |out|
+          Share.content(shares, out)
+          nil
+        end
+      else
+        status 404
+      end
+    end
     get '/share/:uuid' do
       uuid = params[:uuid]
       puts "Lookup file #{uuid}"

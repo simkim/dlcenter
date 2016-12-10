@@ -49,6 +49,7 @@ GEM
       unicode-display_width (~> 1.0, >= 1.0.1)
     ruby-prof (0.15.9)
     ruby-progressbar (1.8.1)
+    rubyzip (1.2.0)
     simplecov (0.11.2)
       docile (~> 1.1.0)
       json (~> 1.8)
@@ -78,6 +79,7 @@ GEM
     unicode-display_width (1.0.5)
     uuid (2.3.8)
       macaddr (~> 1.0)
+    zip_tricks (4.2.3)
 
 PLATFORMS
   ruby
@@ -89,8 +91,13 @@ DEPENDENCIES
   rspec
   rubocop
   ruby-prof
+  rubyzip
   simplecov
   sinatra
   sinatra-contrib
   sinatra-websocket
   uuid
+  zip_tricks
+
+BUNDLED WITH
+   1.13.1

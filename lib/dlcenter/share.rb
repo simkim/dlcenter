@@ -1,4 +1,6 @@
 require 'securerandom'
+require 'zip'
+require 'zip_tricks'
 
 module DLCenter
   class Share
@@ -16,6 +18,25 @@ module DLCenter
       @inline_content = options[:content]
       @oneshot = options[:oneshot]
       raise "Must have a name" unless self.name
+    end
+
+    def self.content(shares, out)
+      w = ZipTricks::BlockWrite.new { |chunk| out.write(chunk) }
+      ZipTricks::Streamer.open(w) do |zip|
+        shares.each do |share|
+          zip.write_deflated_file(share.name) do |sink|
+            r, w = IO.pipe
+            share.content(w)
+            while true
+              buffer = r.read(65536)
+              sink << buffer
+              break if buffer.size < 65536
+            end
+          end
+        end
+      end
+    ensure
+      out.close
     end
 
     def content(out)

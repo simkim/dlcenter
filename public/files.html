@@ -8,6 +8,9 @@
 </div>
 <input type="file" class='file-upload'/>
 
+<div ng-if="remote_shares.length > 1" class='ui center aligned container'>
+  <a ng-href="{{downloadhost}}/all" class='ui teal button'>Download all</a>
+</div>
 <div class="ui three stackable cards">
 
   <div class="card file-upload">

@@ -34,3 +34,6 @@ dropZone {
 textarea {
   width: 100%;
 }
+.ui.center.aligned.container {
+  padding-bottom: 8px;
+}

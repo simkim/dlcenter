@@ -6,6 +6,8 @@ gem 'sinatra-contrib'
 gem 'sinatra-websocket'
 gem 'uuid'
 gem 'ruby-prof'
+gem 'rubyzip'
+gem 'zip_tricks'
 
 
 group :test do
