@@ -12,6 +12,9 @@ module DLCenter
     def add_share(share)
       @shares[share.uuid] = share
     end
+    def remove_share_by_uuid(uuid)
+      @shares.delete(uuid)
+    end
     def get_shares_json
       @shares.values.map do |share|
         {
@@ -125,6 +128,12 @@ module DLCenter
       return
     end
 
+    def handle_unregister_share(msg)
+      uuid = msg[:uuid]
+      self.remove_share_by_uuid(uuid)
+      @namespace.broadcast_available_shares
+    end
+
     def handle_chunk(msg)
       uuid = msg[:uuid]
       encoded_chunk = msg[:chunk]
@@ -152,6 +161,7 @@ module DLCenter
       #puts msg
       case msg[:type]
       when 'register_share' then handle_register_share(msg)
+      when 'unregister_share' then handle_unregister_share(msg)
       when 'chunk' then handle_chunk(msg)
       when 'ping' then true
       else puts "Unkown msg : #{msg}"

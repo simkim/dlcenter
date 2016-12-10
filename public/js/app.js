@@ -100,6 +100,7 @@ function addShareToStore($scope, file) {
         name: file.name,
         size: file.size,
         type: file.type,
+        uuid: uuid,
         file: file,
     };
 
@@ -111,6 +112,15 @@ function addShareToStore($scope, file) {
         size: file.size
     });
     ws.send(fileRegister);
+};
+
+function removeShare($scope, share) {
+    delete $scope.shares[share.uuid];
+    var fileUnregister = JSON.stringify({
+      type: "unregister_share",
+      uuid: share.uuid
+    });
+    ws.send(fileUnregister);
 };
 
 function streamChunk(share, stream_uuid, start, length, cb) {
@@ -245,6 +255,11 @@ myApp.config(function($stateProvider, $urlRouterProvider) {
                     default: console.error("Unknown message" + msg.type);
                 }
             };
+
+            $scope.remove_share = function (share) {
+              removeShare($scope, share);
+            }
+
             $scope.open_modal = function(uuid) {
               $("#modal-"+uuid).modal('show');
             }

@@ -42,6 +42,9 @@
   </div>
   <div ng-repeat="share in remote_shares" class="card">
     <div class="content">
+      <a ng-click="remove_share(share)">
+        <i class="right floated red remove icon"></i>
+      </a>
       <div class="header">
         {{share.name}}
       </div>
