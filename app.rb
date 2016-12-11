@@ -66,7 +66,7 @@ module DLCenter
           "Cache-Control" => "no-cache, private",
           "Pragma"        => "no-cache",
           "Content-type"  => "application/zip",
-          "Content-Disposition" => "attachment; filename=\"dlcenter-pack.zip\""
+          "Content-Disposition" => "attachment; filename=\"dlcenter-pack-#{Time.now.strftime '%F'}.zip\""
         }
         headers options
         stream(:keep_open) do |out|
