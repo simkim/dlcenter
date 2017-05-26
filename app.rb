@@ -13,10 +13,14 @@ module DLCenter
     set :registry, DLCenter::Registry.new
 
     get '/ws' do
-      request.websocket do |ws|
-        namespace = namespace_for_request(request)
-        client = WSClient.new namespace, ws
-        namespace.add_client client
+      begin
+          request.websocket do |ws|
+            namespace = namespace_for_request(request)
+            client = WSClient.new namespace, ws
+            namespace.add_client client
+          end
+      rescue SinatraWebsocket::Error::ConnectionError
+          puts "Not a websocket"
       end
     end
 
