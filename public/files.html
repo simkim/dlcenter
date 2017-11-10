@@ -72,11 +72,16 @@
         {{filesize(share.size)}}
       </div>
       <div class="description">
-        <pre>{{share.content}}</pre>
-        <a ng-click='open_modal(share.uuid)'>
-            <i class='photo icon'></i> Show qrcode
-        </a>
+        <pre ng-if="!share.link">{{share.content}}</pre>
+        <p ng-if="share.link">
+          <a ng-href="{{share.content}}">{{share.content}}</a>
+        </p>
       </div>
+    </div>
+    <div class="extra content">
+      <a ng-click='open_modal(share.uuid)' target='_blank'>
+          <i class='qrcode icon'></i> Show qrcode
+      </a>
     </div>
     <div class="extra content">
       <div class="ui two buttons">

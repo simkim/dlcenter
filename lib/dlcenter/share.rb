@@ -48,5 +48,8 @@ module DLCenter
     def size=(size)
       @size = size.to_i unless size.nil?
     end
+    def link?
+      @inline_content && @inline_content.match(/^[a-z]+:\/\//) && true
+    end
   end
 end

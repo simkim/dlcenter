@@ -37,6 +37,11 @@ RSpec.describe DLCenter::Share do
     expect(share.inline_content).to eq("foobar")
   end
 
+  it "can be a link" do
+    share = DLCenter::Share.new client, name: FFaker::Lorem.word, content: "http://www.free.fr"
+    expect(share.link?).to be true
+  end
+
   it "has a client" do
     share = DLCenter::Share.new client, name: FFaker::Lorem.word
     expect(share).to respond_to(:client)

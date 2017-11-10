@@ -22,7 +22,8 @@ module DLCenter
           name: share.name,
           content_type: share.content_type,
           content: share.inline_content,
-          size: share.size
+          size: share.size,
+          link: share.link?
         }
       end
     end
@@ -35,7 +36,7 @@ module DLCenter
       return stream
     end
     def send_msg(msg, options={})
-      raise NotImplementedError
+      raise NotImplementedError.new(msg)
     end
   end
 

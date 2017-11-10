@@ -27,7 +27,8 @@ module DLCenter
           size: share.size,
           oneshot: share.oneshot,
           content: share.inline_content,
-          content_type: share.content_type
+          content_type: share.content_type,
+          link: share.link?
         }
       end
     end
