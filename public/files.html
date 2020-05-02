@@ -52,8 +52,11 @@
   </div>
   <div class="shares__share share" ng-repeat="share in remote_shares">
     <a class="share__remove icon icon--times icon--red" ng-click="remove_share(share)"></a>
-    <h3 class="share__name">
+    <h3 class="share__name" ng-if='!share.link'>
       {{share.name}}
+    </h3>
+    <h3 class="share__name share__link" ng-if='share.link'>
+      <a href='{{share.name}}' target='_blank'>{{share.name | limitTo: 45}}{{share.name.length > 45 ? '...' : ''}}</a>
     </h3>
     <div class="share__filesize">
       {{filesize(share.size)}}

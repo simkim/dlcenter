@@ -18,6 +18,13 @@ body {
   justify-content: center;
 }
 
+a:visited  {
+  color: var(--theme-color);
+}
+a  {
+  color: var(--theme-color);
+}
+
 .dropzone {
   box-sizing: border-box;
   border: 3px dashed transparent;
