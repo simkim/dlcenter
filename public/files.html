@@ -11,40 +11,6 @@
   Disconnected, trying to reconnect...
 </div>
 
-<div class="uploads">
-  <div class="uploads__upload file-upload">
-    <h2 class="file-upload__header">
-      Share a file
-    </h2>
-    <p>
-      <label class="file-upload__button button button--green">
-        <span class="button__icon icon icon--plus"></span>
-        Select file
-        <input type="file" class="file-upload__input" multiple />
-      </label>
-    </p>
-    <p>
-      You can also drag and drop from your computer here.
-    </p>
-  </div>
-
-  <div class="uploads__upload text-upload">
-    <h2 class="text-upload__header">
-      Share text
-      <span class="text-upload__beta">beta</span>
-    </h2>
-    <p>
-      <textarea class="text-upload__text" name="text" rows="4"></textarea>
-    </p>
-    <p>
-      <button class="text-upload__button button button--green">
-        <span class="button__icon icon icon--plus"></span>
-        Share
-      </button>
-    </p>
-  </div>
-</div>
-
 <div class="shares">
   <h2>Shared files</h2>
   <div class="shares__share share share__empty" ng-if="remote_shares.length == 0">
@@ -82,6 +48,41 @@
     <span class="button__icon icon icon--download"></span>
     Download All
   </a>
+</div>
+
+
+<div class="uploads">
+  <div class="uploads__upload file-upload">
+    <h2 class="file-upload__header">
+      Share a file
+    </h2>
+    <p>
+      <label class="file-upload__button button button--green">
+        <span class="button__icon icon icon--plus"></span>
+        Select file
+        <input type="file" class="file-upload__input" multiple />
+      </label>
+    </p>
+    <p>
+      You can also drag and drop from your computer here.
+    </p>
+  </div>
+
+  <div class="uploads__upload text-upload">
+    <h2 class="text-upload__header">
+      Share text
+      <span class="text-upload__beta">beta</span>
+    </h2>
+    <p>
+      <textarea class="text-upload__text" name="text" rows="4"></textarea>
+    </p>
+    <p>
+      <button class="text-upload__button button button--green">
+        <span class="button__icon icon icon--plus"></span>
+        Share
+      </button>
+    </p>
+  </div>
 </div>
 
 <div class="howto">

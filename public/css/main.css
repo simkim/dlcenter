@@ -18,10 +18,11 @@ body {
   justify-content: center;
 }
 
-a:visited  {
+a:visited {
   color: var(--theme-color);
 }
-a  {
+
+a {
   color: var(--theme-color);
 }
 
@@ -78,6 +79,8 @@ a  {
 
 
 .uploads {
+  clear: both;
+
   display: flex;
   flex-direction: row;
   flex-flow: row wrap;
