@@ -32,13 +32,13 @@ body {
 .main-view {
   max-width: 80ex;
 
-  background: hsla(0, 100%, 100%, .9);
+  background: hsla(0, 100%, 100%, .95);
   color: hsl(220, 6%, 10%);
   border: 1px solid;
   border-color: hsla(0, 100%, 100%, .2) hsla(0, 0%, 0%, .2) hsla(0, 0%, 0%, .2) hsla(0, 100%, 100%, .2);
 
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(10px);
+  /* -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px); */
 
   border-radius: 1rem;
   padding: 1rem;
@@ -49,6 +49,7 @@ body {
 .header__title {
   margin: 0;
   color: var(--theme-color);
+  line-height: 0.7;
 }
 
 .header__subtitle {
@@ -64,8 +65,6 @@ body {
   border: 1px solid rgba(156, 20, 20, 0.658);
   background: rgba(255, 0, 0, 0.13);
 }
-
-
 
 
 .uploads {
@@ -100,16 +99,18 @@ body {
   vertical-align: super;
 }
 
+.shares__share {
+  background: #fff;
+  border-radius: .7rem;
+  padding: .5rem;
+  margin-bottom: .4rem;
+}
+
 .shares__download-all {
   float: right;
 }
 
 .share {
-  background: #fff;
-  border-radius: .7rem;
-  padding: .5rem;
-  margin-bottom: .4rem;
-
   display: flex;
   align-items: center;
 }
@@ -150,22 +151,29 @@ body {
 
 .made-with {
   color: var(--theme-color);
+  line-height: 0.7;
+
+  border-top: 1px solid var(--theme-color);
+  padding-top: .5rem;
 }
 
 
 .qrcode-modal {
   position: fixed;
-  display: none;
+  top: 5vh;
+  left: 5vw;
+  right: 5vw;
+  bottom: 5vh;
+  z-index: -1;
+
   opacity: 0;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  height: 90vh;
+  transform: scale(0.05);
 
-  transition-property: opacity;
-  transition-duration: 1s;
+  transition-property: transform, opacity;
+  transition-duration: 500ms;
+  will-change: transform, opacity;
 
+  display: flex;
   flex-direction: column;
 
   background: #fff;
@@ -178,20 +186,25 @@ body {
 }
 
 .qrcode-modal--visible {
-  display: flex;
+  z-index: 1;
   opacity: 1;
+  transform: none;
 }
 
 .qrcode-modal__header {
   margin: 0 0 1rem 0;
+  text-align: center;
 }
 
 .qrcode-modal__image,
 .qrcode-modal__image canvas {
   flex-grow: 1;
   display: flex;
+  image-rendering: pixelated;
   image-rendering: crisp-edges;
   object-fit: contain;
+  min-width: 1px;
+  min-height: 1px;
   max-width: 100%;
   max-height: 100%;
 }
