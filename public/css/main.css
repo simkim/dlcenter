@@ -256,18 +256,6 @@ body {
   content: "\f029";
 }
 
-.icon--info::after {
-  content: "\f129";
-}
-
-.icon--info-circle::after {
-  content: "\f05a";
-}
-
-.icon--question::after {
-  content: "\f128";
-}
-
 .icon--download::after {
   content: "\f019";
 }
