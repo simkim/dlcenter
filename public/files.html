@@ -17,7 +17,7 @@
     No shared files yet
   </div>
   <div class="shares__share share" ng-repeat="share in remote_shares">
-    <a class="share__remove icon icon--times icon--red" ng-click="remove_share(share)"></a>
+    <a class="share__remove icon icon--times icon--red" ng-if="shares[share.uuid]" ng-click="remove_share(share)"></a>
     <h3 class="share__name" ng-if='!share.link'>
       {{share.name}}
     </h3>
