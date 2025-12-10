@@ -1,6 +1,13 @@
 require 'base64'
 
 module DLCenter
+  # Input validation constants
+  MAX_FILENAME_LENGTH = 255
+  MAX_CONTENT_TYPE_LENGTH = 256
+  MAX_INLINE_CONTENT_LENGTH = 10_000
+  MAX_SHARES_PER_CLIENT = 100
+  MAX_CHUNK_SIZE = 2 * 1024 * 1024  # 2MB max chunk size
+
   class Client
     attr_reader :shares
     attr_accessor :namespace
@@ -121,9 +128,62 @@ module DLCenter
     end
 
     def handle_register_share(msg)
+      # Validate share count limit
+      if @shares.size >= MAX_SHARES_PER_CLIENT
+        puts "Client exceeded max shares limit"
+        return
+      end
+
+      # Validate and sanitize name
       name = msg[:name]
-      puts "Websocket #{@ws} share file #{name}"
-      share = Share.new(self, msg)
+      unless name.is_a?(String) && name.length > 0 && name.length <= MAX_FILENAME_LENGTH
+        puts "Invalid share name"
+        return
+      end
+      # Sanitize filename: remove control characters, path separators
+      sanitized_name = name.gsub(/[\x00-\x1f\x7f"\\\/\r\n]/, '_').strip
+
+      # Validate content_type
+      content_type = msg[:content_type]
+      if content_type
+        unless content_type.is_a?(String) && content_type.length <= MAX_CONTENT_TYPE_LENGTH &&
+               content_type.match?(/\A[\w\-]+\/[\w\-\.\+]+\z/)
+          content_type = 'application/octet-stream'
+        end
+      end
+
+      # Validate size
+      size = msg[:size]
+      if size && (!size.is_a?(Integer) || size < 0)
+        size = nil
+      end
+
+      # Validate inline content (for links/text shares)
+      inline_content = msg[:content]
+      if inline_content
+        unless inline_content.is_a?(String) && inline_content.length <= MAX_INLINE_CONTENT_LENGTH
+          inline_content = nil
+        end
+      end
+
+      # Validate client-provided UUID format
+      uuid = msg[:uuid]
+      if uuid.is_a?(String) && uuid.match?(/\A[a-f0-9\-]{36}\z/i)
+        sanitized_uuid = uuid
+      else
+        sanitized_uuid = nil  # Let Share generate one
+      end
+
+      sanitized_msg = {
+        uuid: sanitized_uuid,
+        name: sanitized_name,
+        content_type: content_type,
+        size: size,
+        content: inline_content,
+        oneshot: msg[:oneshot] == true
+      }
+
+      share = Share.new(self, sanitized_msg)
       self.add_share(share)
       @namespace.broadcast_available_shares
       return
@@ -131,17 +191,37 @@ module DLCenter
 
     def handle_unregister_share(msg)
       uuid = msg[:uuid]
+      # Validate UUID format
+      unless uuid.is_a?(String) && uuid.match?(/\A[a-f0-9\-]{36}\z/i)
+        puts "Invalid UUID format"
+        return
+      end
       self.remove_share_by_uuid(uuid)
       @namespace.broadcast_available_shares
     end
 
     def handle_chunk(msg)
       uuid = msg[:uuid]
+      # Validate UUID format
+      unless uuid.is_a?(String) && uuid.match?(/\A[a-f0-9\-]{36}\z/i)
+        puts "Invalid UUID format in chunk"
+        return false
+      end
+
       encoded_chunk = msg[:chunk]
+      unless encoded_chunk.is_a?(String)
+        puts "Invalid chunk data"
+        return false
+      end
+
       stream = @streams[uuid]
       if stream
         chunk = Base64.decode64(encoded_chunk)
-        # puts "Got chunk of size #{chunk.length} for stream #{uuid}"
+        # Validate chunk size
+        if chunk.length > MAX_CHUNK_SIZE
+          puts "Chunk too large: #{chunk.length} bytes"
+          return false
+        end
         stream.got_chunk(chunk)
         begin
           stream.drain_buffer

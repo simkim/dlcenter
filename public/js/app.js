@@ -8,6 +8,8 @@ function App() {
   const [textValue, setTextValue] = useState('');
   const wsRef = useRef(null);
   const pingRef = useRef(null);
+  // Keep a synchronous ref of local shares for streaming lookups
+  const localSharesRef = useRef({});
   const downloadHost = `${document.location.protocol}//${document.location.host}`;
 
   const addFileShare = useCallback((file) => {
@@ -28,6 +30,8 @@ function App() {
       file: file,
     };
 
+    // Update ref synchronously before sending WebSocket message
+    localSharesRef.current[uuid] = share;
     setLocalShares(prev => ({ ...prev, [uuid]: share }));
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -49,9 +53,12 @@ function App() {
       name: "clipboard",
       size: content.length,
       type: "text/plain",
+      uuid: uuid,
       content: content,
     };
 
+    // Update ref synchronously before sending WebSocket message
+    localSharesRef.current[uuid] = share;
     setLocalShares(prev => ({ ...prev, [uuid]: share }));
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -67,6 +74,8 @@ function App() {
   }, []);
 
   const removeShare = useCallback((share) => {
+    // Update ref synchronously
+    delete localSharesRef.current[share.uuid];
     setLocalShares(prev => {
       const newShares = { ...prev };
       delete newShares[share.uuid];
@@ -83,15 +92,13 @@ function App() {
 
   const handleStream = useCallback((msg) => {
     console.log("Should stream file " + msg.share + " to stream " + msg.uuid);
-    setLocalShares(current => {
-      const share = current[msg.share];
-      if (share) {
-        streamShare(share, msg.uuid, wsRef.current);
-      } else {
-        console.log("can't find share " + msg.share + " in shares");
-      }
-      return current;
-    });
+    // Use ref for synchronous lookup
+    const share = localSharesRef.current[msg.share];
+    if (share) {
+      streamShare(share, msg.uuid, wsRef.current);
+    } else {
+      console.log("can't find share " + msg.share + " in shares", localSharesRef.current);
+    }
   }, []);
 
   const setupWebSocket = useCallback(() => {
