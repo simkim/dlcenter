@@ -1,303 +1,258 @@
-'use strict';
+const { useState, useEffect, useRef, useCallback } = React;
 
-if (window.File && window.FileReader && window.FileList && window.Blob) {
-    // Great success! All the File APIs are supported.
-} else {
-    alert('The File APIs are not fully supported in this browser.');
-}
+function App() {
+  const [connected, setConnected] = useState(false);
+  const [remoteShares, setRemoteShares] = useState([]);
+  const [localShares, setLocalShares] = useState({});
+  const [qrModal, setQrModal] = useState(null);
+  const [textValue, setTextValue] = useState('');
+  const wsRef = useRef(null);
+  const pingRef = useRef(null);
+  const downloadHost = `${document.location.protocol}//${document.location.host}`;
 
-function setupWS($scope, $timeout, $interval) {
-    var protocol = "";
-    if (document.location.protocol === "https:") {
-        protocol = "wss:";
-    } else {
-        protocol = "ws:";
+  const addFileShare = useCallback((file) => {
+    if (file.size >= 5000 * 1024 * 1024) {
+      console.error("File size too high: " + file.size);
+      alert("File size too high: " + file.size);
+      return;
     }
-    var ws = new WebSocket(protocol + '//' + window.location.host + "/ws");
 
-    ws.onopen = function () {
-        $scope.connected = true;
-        console.log('websocket opened');
-        $scope.ping = $interval(function () {
-            ws.send(JSON.stringify({
-                type: "ping",
-            }));
-        }, 10000);
+    const uuid = generateUUID();
+    console.log("add file to store, uuid:", uuid);
+
+    const share = {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uuid: uuid,
+      file: file,
     };
 
-    ws.onclose = function () {
-        console.log("Websocket closed");
-        if ($scope.connected) {
-            $scope.connected = false;
-            $scope.clients = {};
-            $interval.cancel($scope.ping);
-            $timeout(function () {
-                setupWS($scope, $timeout, $interval);
-            }, 2000);
-        }
-    };
-    ws.onerror = function () {
-        console.log("Websocket error");
-        $scope.connected = false;
-        $scope.clients = {};
-        $timeout(function () {
-            setupWS($scope, $timeout, $interval);
-        }, 10000);
+    setLocalShares(prev => ({ ...prev, [uuid]: share }));
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "register_share",
+        uuid: uuid,
+        name: file.name,
+        content_type: file.type,
+        size: file.size
+      }));
     }
-    ws.onmessage = function (m) {
-        console.log('websocket message: ' + m.data);
-        var msg = JSON.parse(m.data);
-        $scope.$apply(function () {
-            $scope.handle_msg(msg);
-        })
+  }, []);
+
+  const addContentShare = useCallback((content) => {
+    const uuid = generateUUID();
+    console.log("add content to store, uuid:", uuid);
+
+    const share = {
+      name: "clipboard",
+      size: content.length,
+      type: "text/plain",
+      content: content,
     };
 
-    window.ws = ws;
-}
+    setLocalShares(prev => ({ ...prev, [uuid]: share }));
 
-function addSharesToStore($scope, files) {
-    for (var i = 0, file; file = files[i]; i++) {
-        if (file.size < 5000 * 1024 * 1024) {
-            addShareToStore($scope, file);
-        } else {
-            console.error("File size to high : " + file.size);
-            alert("File size to high : " + file.size);
-        }
-    }
-}
-
-function generateUUID() {
-    var d = new Date().getTime();
-    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = (d + Math.random() * 16) % 16 | 0;
-        d = Math.floor(d / 16);
-        return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-    return uuid;
-};
-
-function ellipseAt(str, length) {
-    if (str.length > length) {
-        return str.substring(0, length) + "..."
-    }
-    return str
-}
-
-function addContentShareToStore($scope, content) {
-    console.log("add content to store");
-    var uuid = generateUUID();
-    console.log("size : " + content.length);
-    console.log("uuid : " + uuid);
-
-    $scope.shares[uuid] = {
-        name: "clipboard",
-        size: content.length,
-        type: "text/plain",
-        content: content,
-    };
-
-    var fileRegister = JSON.stringify({
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
         type: "register_share",
         uuid: uuid,
         name: ellipseAt(content, 100),
         content: content,
         content_type: "text/plain",
         size: content.length
+      }));
+    }
+  }, []);
+
+  const removeShare = useCallback((share) => {
+    setLocalShares(prev => {
+      const newShares = { ...prev };
+      delete newShares[share.uuid];
+      return newShares;
     });
-    ws.send(fileRegister);
-};
-function addShareToStore($scope, file) {
-    console.log("add file to store");
-    var uuid = generateUUID();
-    console.log("size : " + file.size);
-    console.log("uuid : " + uuid);
 
-    $scope.shares[uuid] = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uuid: uuid,
-        file: file,
-    };
-
-    var fileRegister = JSON.stringify({
-        type: "register_share",
-        uuid: uuid,
-        name: file.name,
-        content_type: file.type,
-        size: file.size
-    });
-    ws.send(fileRegister);
-};
-
-function removeShare($scope, share) {
-    delete $scope.shares[share.uuid];
-    var fileUnregister = JSON.stringify({
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
         type: "unregister_share",
         uuid: share.uuid
-    });
-    ws.send(fileUnregister);
-};
-
-function streamChunk(share, stream_uuid, start, length, cb) {
-    var reader = new FileReader();
-    reader.onload = function (e) {
-        // console.log("chunk loaded " + stream_uuid + " ("+start+","+length+")");
-        if (length == 0) {
-            console.error("can't stream chunk of length 0");
-            return;
-        }
-        if (length != e.target.result.length) {
-            console.error("Ask for " + length + " but got ", e.target.result.length);
-            return;
-        }
-        var close = (start + length) == share.file.size;
-        ws.send(JSON.stringify({
-            type: "chunk",
-            uuid: stream_uuid,
-            close: close,
-            chunk: btoa(e.target.result)
-        }));
-        if (cb)
-            cb(close);
-    };
-    var blob = share.file.slice(start, start + length);
-    reader.readAsBinaryString(blob);
-};
-
-function streamShare(share, stream_uuid, cb) {
-    console.log("stream share " + stream_uuid + " (" + share.size + ")");
-    if (share.content) {
-        ws.send(JSON.stringify({
-            type: "chunk",
-            uuid: stream_uuid,
-            close: true,
-            chunk: btoa(share.content)
-        }));
-    } else {
-        var position = 0;
-        function chunkStreamed(done) {
-            if (done) {
-                if (cb)
-                    cb();
-                return;
-            }
-            var start = position;
-            var length = Math.min(1024000, share.size - position);
-            position += length;
-            streamChunk(share, stream_uuid, start, length, chunkStreamed);
-        }
-        chunkStreamed(false);
+      }));
     }
-};
+  }, []);
 
-function setupFileDrop($scope) {
-    var dropZone = document.querySelector('.dropzone');
-
-    // Optional.   Show the copy icon when dragging over.  Seems to only work for chrome.
-    dropZone.addEventListener('dragover', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        $scope.dragdrop = true;
-        dropZone.classList.add("dropzone--dropping");
-        e.dataTransfer.dropEffect = 'copy';
+  const handleStream = useCallback((msg) => {
+    console.log("Should stream file " + msg.share + " to stream " + msg.uuid);
+    setLocalShares(current => {
+      const share = current[msg.share];
+      if (share) {
+        streamShare(share, msg.uuid, wsRef.current);
+      } else {
+        console.log("can't find share " + msg.share + " in shares");
+      }
+      return current;
     });
+  }, []);
 
-    dropZone.addEventListener('dragenter', function (e) {
-        dropZone.classList.add("dropzone--dropping");
-        return false;
-    });
+  const setupWebSocket = useCallback(() => {
+    const protocol = document.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(protocol + '//' + window.location.host + "/ws");
+    wsRef.current = ws;
 
-    dropZone.addEventListener('dragleave', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove("dropzone--dropping")
-        return false;
-    });
+    ws.onopen = () => {
+      setConnected(true);
+      console.log('websocket opened');
+      pingRef.current = setInterval(() => {
+        ws.send(JSON.stringify({ type: "ping" }));
+      }, 10000);
+    };
 
-    // Get file data on drop
-    dropZone.addEventListener('drop', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        dropZone.classList.remove("dropzone--dropping")
-        var files = e.dataTransfer.files; // Array of all files
-        if (files.length > 0) {
-            addSharesToStore($scope, files);
-        } else {
-            addContentShareToStore($scope, e.dataTransfer.getData("Text"))
+    ws.onclose = () => {
+      console.log("Websocket closed");
+      setConnected(false);
+      setRemoteShares([]);
+      if (pingRef.current) {
+        clearInterval(pingRef.current);
+      }
+      setTimeout(setupWebSocket, 2000);
+    };
+
+    ws.onerror = () => {
+      console.log("Websocket error");
+      setConnected(false);
+      setRemoteShares([]);
+      setTimeout(setupWebSocket, 10000);
+    };
+
+    ws.onmessage = (m) => {
+      console.log('websocket message: ' + m.data);
+      const msg = JSON.parse(m.data);
+      switch (msg.type) {
+        case "shares":
+          setRemoteShares(msg.shares);
+          break;
+        case "hello":
+          console.log("Hello: " + msg.text);
+          break;
+        case "stream":
+          handleStream(msg);
+          break;
+        default:
+          console.error("Unknown message: " + msg.type);
+      }
+    };
+  }, [handleStream]);
+
+  useEffect(() => {
+    setupWebSocket();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (pingRef.current) {
+        clearInterval(pingRef.current);
+      }
+    };
+  }, [setupWebSocket]);
+
+  useEffect(() => {
+    const dropZone = document.querySelector('.dropzone');
+
+    const handleDragOver = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dropZone.classList.add("dropzone--dropping");
+      e.dataTransfer.dropEffect = 'copy';
+    };
+
+    const handleDragEnter = (e) => {
+      dropZone.classList.add("dropzone--dropping");
+      return false;
+    };
+
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("dropzone--dropping");
+      return false;
+    };
+
+    const handleDrop = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dropZone.classList.remove("dropzone--dropping");
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          addFileShare(files[i]);
         }
-        return false;
-    });
-};
+      } else {
+        const text = e.dataTransfer.getData("Text");
+        if (text) {
+          addContentShare(text);
+        }
+      }
+      return false;
+    };
 
-var myApp = angular.module('shareApp', ['ui.router', 'monospaced.qrcode']);
+    dropZone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('dragenter', handleDragEnter);
+    dropZone.addEventListener('dragleave', handleDragLeave);
+    dropZone.addEventListener('drop', handleDrop);
 
-myApp.config(function ($stateProvider, $urlRouterProvider) {
+    return () => {
+      dropZone.removeEventListener('dragover', handleDragOver);
+      dropZone.removeEventListener('dragenter', handleDragEnter);
+      dropZone.removeEventListener('dragleave', handleDragLeave);
+      dropZone.removeEventListener('drop', handleDrop);
+    };
+  }, [addFileShare, addContentShare]);
 
-    $urlRouterProvider.otherwise("/");
+  const handleTextShare = () => {
+    if (textValue.length > 0) {
+      addContentShare(textValue);
+      setTextValue('');
+    }
+  };
 
-    $stateProvider
-        .state('home', {
-            url: "/",
-            templateUrl: "files.html",
-            controller: function ($scope, $timeout, $interval) {
+  return (
+    <>
+      <Header />
 
-                $scope.remote_shares = [];
-                $scope.shares = {}
-                $scope.connected = false;
-                $scope.dragdrop = true;
-                $scope.downloadhost = document.location.protocol + "//" + document.location.host;
-                $scope.filesize = filesize;
-                function handle_stream(msg) {
-                    console.log("Should stream file " + msg.share + " to stream " + msg.uuid)
-                    var share = $scope.shares[msg.share];
-                    if (share) {
-                        streamShare(share, msg.uuid);
-                    } else {
-                        console.log("cant find share " + msg.share + " in shares")
-                    }
-                }
+      {!connected && (
+        <div className="error-message">Disconnected, trying to reconnect...</div>
+      )}
 
-                function handle_shares(shares) {
-                    console.log(shares);
-                    $scope.remote_shares = shares;
-                };
+      <SharesList
+        remoteShares={remoteShares}
+        localShares={localShares}
+        downloadHost={downloadHost}
+        onRemove={removeShare}
+        onShowQR={setQrModal}
+      />
 
-                $scope.handle_msg = function (msg) {
-                    switch (msg.type) {
-                        case "shares": handle_shares(msg.shares); break;
-                        case "hello": console.log("Hello : " + msg.text); break;
-                        case "stream": handle_stream(msg); break;
-                        default: console.error("Unknown message" + msg.type);
-                    }
-                };
+      {qrModal && (
+        <QRCodeModal
+          share={qrModal}
+          downloadHost={downloadHost}
+          onClose={() => setQrModal(null)}
+        />
+      )}
 
-                $scope.remove_share = function (share) {
-                    removeShare($scope, share);
-                }
+      <div className="uploads">
+        <FileUpload onFileSelect={addFileShare} />
+        <TextUpload
+          value={textValue}
+          onChange={setTextValue}
+          onShare={handleTextShare}
+        />
+      </div>
 
-                $scope.open_modal = function (uuid) {
-                    document.querySelector("#modal-" + uuid).classList.add('qrcode-modal--visible');
-                }
-                $scope.close_modal = function (uuid) {
-                    document.querySelector("#modal-" + uuid).classList.remove('qrcode-modal--visible');
-                }
+      <HowTo />
+      <Footer />
+    </>
+  );
+}
 
-                setupWS($scope, $timeout, $interval);
-                setupFileDrop($scope);
-                document.querySelector('.text-upload__button').addEventListener('click', function () {
-                    const textarea = document.querySelector('.text-upload__text')
-                    const text = textarea.value;
-                    if (text.length > 0) {
-                        addContentShareToStore($scope, text);
-                        textarea.value = '';
-                    }
-
-                });
-                document.querySelector('.file-upload__input').addEventListener('change', function () {
-                    addSharesToStore($scope, this.files);
-                    this.value = null
-                });
-            }
-        });
-});
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
