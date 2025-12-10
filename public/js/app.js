@@ -144,6 +144,11 @@ function App() {
         case "stream":
           handleStream(msg);
           break;
+        case "ping":
+          ws.send(JSON.stringify({ type: "pong" }));
+          break;
+        case "pong":
+          break;
         default:
           console.error("Unknown message: " + msg.type);
       }
