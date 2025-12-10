@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "setup": "bundle install",
+    "run": "bundle exec rackup -p $CONDUCTOR_PORT"
+  }
+}
