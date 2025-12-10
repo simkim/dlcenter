@@ -9,8 +9,7 @@ module DLCenter
 
     def initialize client, options = {}
       @client = client
-      @uuid = options[:uuid]
-      @uuid ||= SecureRandom.uuid
+      @uuid = options[:uuid] || SecureRandom.uuid
       raise "Invalid option : #{options.class} #{options}" unless options.class == Hash
       self.content_type = options[:content_type]
       self.name = options[:name]
@@ -24,7 +23,9 @@ module DLCenter
       w = ZipTricks::BlockWrite.new { |chunk| out.write(chunk) }
       ZipTricks::Streamer.open(w) do |zip|
         shares.each do |share|
-          zip.write_deflated_file(share.name) do |sink|
+          # Sanitize filename to prevent zip path traversal
+          safe_name = sanitize_zip_filename(share.name)
+          zip.write_deflated_file(safe_name) do |sink|
             r, w = IO.pipe
             share.content(w)
             while true
@@ -37,6 +38,15 @@ module DLCenter
       end
     ensure
       out.close
+    end
+
+    def self.sanitize_zip_filename(name)
+      return 'file' if name.nil? || name.empty?
+      # Remove path traversal sequences and leading slashes
+      safe = name.gsub(/\.\./, '_').gsub(/^\/+/, '').gsub(/\\/, '_')
+      # Remove any remaining absolute path indicators
+      safe = safe.sub(/^[A-Za-z]:/, '')
+      safe.empty? ? 'file' : safe
     end
 
     def content(out)
