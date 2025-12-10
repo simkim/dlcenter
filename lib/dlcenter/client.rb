@@ -86,12 +86,20 @@ module DLCenter
   end
 
   class WSClient < Client
+    HEARTBEAT_INTERVAL = 30  # seconds between pings
+    HEARTBEAT_TIMEOUT = 10   # seconds to wait for pong
+
     def initialize namespace, ws
       super(namespace)
       @ws = ws
+      @pong_received = true
+      @heartbeat_timer = nil
+      @timeout_timer = nil
+
       ws.onopen do
         self.send_msg(:hello, text: "Hello World!")
         self.send_msg(:shares, shares: @namespace.get_shares_json)
+        start_heartbeat
       end
       ws.onmessage do |tmsg|
 
@@ -105,8 +113,34 @@ module DLCenter
       end
       ws.onclose do
         puts "WS closed"
+        stop_heartbeat
         @namespace.remove_client(self)
       end
+    end
+
+    def start_heartbeat
+      @heartbeat_timer = EM.add_periodic_timer(HEARTBEAT_INTERVAL) do
+        if @pong_received
+          @pong_received = false
+          send({type: :ping}.to_json)
+          @timeout_timer = EM.add_timer(HEARTBEAT_TIMEOUT) do
+            unless @pong_received
+              puts "Heartbeat timeout, closing connection"
+              @ws.close
+            end
+          end
+        else
+          puts "No pong received, closing connection"
+          @ws.close
+        end
+      end
+    end
+
+    def stop_heartbeat
+      EM.cancel_timer(@heartbeat_timer) if @heartbeat_timer
+      EM.cancel_timer(@timeout_timer) if @timeout_timer
+      @heartbeat_timer = nil
+      @timeout_timer = nil
     end
 
     def send_msg(msg, params={})
@@ -244,7 +278,8 @@ module DLCenter
       when 'register_share' then handle_register_share(msg)
       when 'unregister_share' then handle_unregister_share(msg)
       when 'chunk' then handle_chunk(msg)
-      when 'ping' then true
+      when 'ping' then send({type: :pong}.to_json)
+      when 'pong' then @pong_received = true
       else puts "Unkown msg : #{msg}"
       end
     end
