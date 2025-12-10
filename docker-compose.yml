@@ -1,8 +1,9 @@
-app:
-  restart: unless-stopped
-  build: .
-  environment:
-    RACK_ENV: production
-    VIRTUAL_HOST: dl.localhost,dl.center
-    LETSENCRYPT_EMAIL: letsencrypt@simkim.net
-    LETSENCRYPT_HOST: dl.center
+services:
+  app:
+    restart: unless-stopped
+    build: .
+    environment:
+      RACK_ENV: production
+      VIRTUAL_HOST: dl.localhost,dl.center
+      LETSENCRYPT_EMAIL: letsencrypt@simkim.net
+      LETSENCRYPT_HOST: dl.center

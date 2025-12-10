@@ -61,7 +61,7 @@ RSpec.describe DLCenter::Namespace do
     namespace.add_client(client)
 
     expect(namespace.shares.length).to eq(1)
-    expect(namespace.get_shares_json).to eq([{size: nil, content_type: nil, oneshot: nil, uuid: share.uuid, name: share.name, content: "foobar"}])
+    expect(namespace.get_shares_json).to eq([{size: nil, content_type: nil, oneshot: nil, uuid: share.uuid, name: share.name, content: "foobar", link: nil}])
   end
 
   it "can retrieve the shares by uuid" do
