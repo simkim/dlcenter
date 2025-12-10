@@ -9,7 +9,6 @@ LICENSE
 # Development files
 .ruby-version
 .rspec
-Gemfile.lock
 
 # Test files
 spec/
