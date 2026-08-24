@@ -53,10 +53,31 @@ function QRCodeModal({ share, downloadHost, onClose }) {
   );
 }
 
-function Share({ share, localShares, downloadHost, onRemove, onShowQR }) {
+function downloadLabel(download) {
+  if (!download) return 'Download';
+  switch (download.status) {
+    case 'connecting': return 'Connecting\u2026';
+    case 'direct': return 'Direct ' + Math.round((download.progress || 0) * 100) + '%';
+    case 'relay': return 'Downloading\u2026';
+    case 'done': return 'Done';
+    default: return 'Download';
+  }
+}
+
+function Share({ share, localShares, downloadHost, downloads, onRemove, onShowQR, onDownload }) {
   const canDelete = localShares[share.uuid];
   const isLink = share.link;
   const displayName = share.name.length > 45 ? share.name.substring(0, 45) + '...' : share.name;
+  const download = downloads && downloads[share.uuid];
+
+  // Remote shares go through the direct/relay logic; our own shares (and
+  // browsers without JS or WebRTC) keep the plain relay link.
+  const handleDownload = (e) => {
+    if (!onDownload || canDelete || !rtcSupported()) return;
+    e.preventDefault();
+    if (download) return; // already in progress
+    onDownload(share);
+  };
 
   return (
     <div className="shares__share share">
@@ -75,13 +96,14 @@ function Share({ share, localShares, downloadHost, onRemove, onShowQR }) {
         <span className="button__icon icon icon--qrcode"></span>
       </a>
       <a
-        className="share__download button button--blue"
+        className={"share__download button button--blue" + (download ? " share__download--busy" : "")}
         download
         target="_blank"
         href={`${downloadHost}/share/${share.uuid}`}
+        onClick={handleDownload}
       >
         <span className="button__icon icon icon--download"></span>
-        Download
+        {downloadLabel(download)}
       </a>
     </div>
   );
@@ -96,7 +118,7 @@ function Header() {
   );
 }
 
-function SharesList({ remoteShares, localShares, downloadHost, onRemove, onShowQR }) {
+function SharesList({ remoteShares, localShares, downloadHost, downloads, onRemove, onShowQR, onDownload }) {
   return (
     <div className="shares">
       <h2>Shared files</h2>
@@ -109,8 +131,10 @@ function SharesList({ remoteShares, localShares, downloadHost, onRemove, onShowQ
             share={share}
             localShares={localShares}
             downloadHost={downloadHost}
+            downloads={downloads}
             onRemove={onRemove}
             onShowQR={onShowQR}
+            onDownload={onDownload}
           />
         ))
       )}
