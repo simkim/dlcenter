@@ -6,6 +6,9 @@ require 'json'
 require 'dlcenter'
 require 'dlcenter/thin_ipv6_host'
 
+# Logs are read through Docker: don't let Ruby block-buffer them.
+$stdout.sync = true
+
 module DLCenter
   class App < Sinatra::Base
     helpers Sinatra::Streaming
@@ -177,6 +180,9 @@ module DLCenter
     end
 
     get '/' do
+      # Always revalidate so a reload picks up the current frontend
+      # (stale tabs running old code can't be fixed server-side, fresh loads can).
+      headers 'Cache-Control' => 'no-cache'
       File.read(settings.public_folder+'/index.html')
     end
 
