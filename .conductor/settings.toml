@@ -1,0 +1,15 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "bundle install"
+run_mode = "concurrent"
+
+[scripts.run.dev]
+command = "bundle exec rackup -p $CONDUCTOR_PORT"
+available_in = [ "local" ]
+default = true
+icon = "play"
+
+[scripts.run.test]
+command = "bundle exec rspec"
+icon = "test-tube"
