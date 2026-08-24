@@ -100,7 +100,18 @@ docker exec nginx-proxy nginx -s reload
 This configuration:
 - Enables HTTP/1.1 for the upstream connection (required for WebSocket upgrade)
 - Passes the `Upgrade` and `Connection` headers to the backend
-- Sets a long read timeout for persistent WebSocket connections
+- Sets a long read timeout (nginx's default is 60s) so downloads waiting on a
+  slow sender and idle WebSockets aren't cut
+
+**Notes:**
+- The application accepts any casing of the `Connection` header (nginx-proxy
+  sends `upgrade` in lowercase), so `proxy_set_header Connection "Upgrade"` is
+  only kept for older application versions.
+- Downloads are sent with `X-Accel-Buffering: no`, which makes nginx stream
+  them straight through instead of buffering up to 1GB to disk
+  (`proxy_max_temp_file_size`). Backpressure then flows all the way from the
+  downloader to the sender's browser, so the server never holds more than a
+  few MB of a transfer in memory.
 
 ## Volumes
 
@@ -157,6 +168,13 @@ Ensure:
    ```bash
    docker exec nginx-proxy nginx -s reload
    ```
+
+### Clients get `429 Too Many Connections` on `/ws`
+
+The application limits concurrent WebSocket connections per client IP
+(`DLCENTER_MAX_CONNECTIONS_PER_IP`, default 50). Behind a NAT, a whole office
+shares one IP. Check the application logs for `WebSocket handshake failed`
+messages; restarting the container resets the counters.
 
 ### Container can't connect to nginx-proxy
 
