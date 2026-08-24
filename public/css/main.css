@@ -177,6 +177,13 @@ a:visited:hover {
   }
 }
 
+.share__download--busy {
+  opacity: 0.8;
+  cursor: progress;
+  min-width: 9rem;
+  justify-content: center;
+}
+
 .share__remove {
   color: var(--red);
   cursor: pointer;

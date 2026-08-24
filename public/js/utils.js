@@ -1,10 +1,26 @@
+// Share uuids are capability tokens (anyone holding /share/<uuid> can fetch
+// the file), so they must come from a cryptographic source, not Math.random().
 function generateUUID() {
-  let d = new Date().getTime();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (d + Math.random() * 16) % 16 | 0;
-    d = Math.floor(d / 16);
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
+  if (crypto.randomUUID) return crypto.randomUUID();
+  // Older browsers / insecure contexts: RFC 4122 v4 from getRandomValues.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+// Start a download of `url` (an attachment response) without navigating:
+// window.location.assign() counts as a navigation and makes some browsers
+// (Firefox, Safari) drop the page's WebSocket.
+function relayDownload(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 1000);
 }
 
 function ellipseAt(str, length) {

@@ -6,6 +6,8 @@ function App() {
   const [localShares, setLocalShares] = useState({});
   const [qrModal, setQrModal] = useState(null);
   const [textValue, setTextValue] = useState('');
+  // Per-share download state: { status: connecting|direct|relay|done, progress }
+  const [downloads, setDownloads] = useState({});
   const wsRef = useRef(null);
   const pingRef = useRef(null);
   const reconnectTimerRef = useRef(null);
@@ -93,6 +95,42 @@ function App() {
     }
   }, []);
 
+  const setDownload = useCallback((uuid, value) => {
+    setDownloads(prev => {
+      const next = { ...prev };
+      if (value) next[uuid] = value; else delete next[uuid];
+      return next;
+    });
+  }, []);
+
+  // Download a remote share: try the direct browser-to-browser path first,
+  // fall back to the server relay (the plain /share/:uuid link) otherwise.
+  const downloadShare = useCallback((share) => {
+    const url = `${downloadHost}/share/${share.uuid}`;
+    const clearLater = () => setTimeout(() => setDownload(share.uuid, null), 2000);
+    const relay = () => {
+      setDownload(share.uuid, { status: 'relay' });
+      relayDownload(url);
+      clearLater();
+    };
+    const ws = wsRef.current;
+    if (!rtcSupported() || !ws || ws.readyState !== WebSocket.OPEN) {
+      relay();
+      return;
+    }
+    setDownload(share.uuid, { status: 'connecting' });
+    rtcDownload(share, ws, {
+      onConnected: () => setDownload(share.uuid, { status: 'direct', progress: 0 }),
+      onProgress: (received, size) => setDownload(share.uuid, { status: 'direct', progress: size ? received / size : 1 }),
+      onDone: () => { setDownload(share.uuid, { status: 'done' }); clearLater(); },
+      onAbort: () => setDownload(share.uuid, null),
+      onFallback: (reason) => {
+        console.log("direct download unavailable (" + reason + "), using relay");
+        relay();
+      }
+    });
+  }, [downloadHost, setDownload]);
+
   const handleStream = useCallback((msg) => {
     console.log("Should stream file " + msg.share + " to stream " + msg.uuid);
     // Use ref for synchronous lookup
@@ -176,6 +214,7 @@ function App() {
       setConnected(false);
       setRemoteShares([]);
       streamAbortAll();
+      rtcSocketClosed();
       if (pingRef.current) {
         clearInterval(pingRef.current);
         pingRef.current = null;
@@ -211,12 +250,29 @@ function App() {
           break;
         case "pong":
           break;
+        case "rtc_session":
+        case "rtc_offer":
+        case "rtc_answer":
+        case "rtc_ice":
+        case "rtc_close":
+          rtcHandleMessage(msg, ws, localSharesRef.current);
+          break;
         default:
           console.warn("Unknown message: " + msg.type);
       }
     };
   }, [handleStream, registerLocalShares, scheduleReconnect]);
   setupRef.current = setupWebSocket;
+
+  // The service worker streams direct transfers straight to disk (see sw.js).
+  // Optional: without it, small files are saved from memory and big ones
+  // take the relay.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.log("service worker unavailable: " + err.message);
+    });
+  }, []);
 
   useEffect(() => {
     setupWebSocket();
@@ -308,8 +364,10 @@ function App() {
         remoteShares={remoteShares}
         localShares={localShares}
         downloadHost={downloadHost}
+        downloads={downloads}
         onRemove={removeShare}
         onShowQR={setQrModal}
+        onDownload={downloadShare}
       />
 
       {qrModal && (

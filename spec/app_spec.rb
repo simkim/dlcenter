@@ -123,4 +123,29 @@ describe "Downloads" do
     get "/share/#{SecureRandom.uuid}"
     expect(last_response.status).to eq(404)
   end
+
+  # The client IP is the whole authorization model (namespaces are keyed by
+  # it), so pin down how Rack resolves it behind the nginx-proxy container.
+  describe "client IP resolution" do
+    let(:namespace) { registry.context_for("198.51.100.7").namespace_for(:default) }
+
+    it "uses X-Forwarded-For when the request comes through the proxy" do
+      share
+      get "/g", {}, 'REMOTE_ADDR' => '172.18.0.2', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7'
+      expect(last_response).to be_ok
+      expect(last_response.body).to eq("hello")
+    end
+
+    it "ignores X-Forwarded-For sent directly by a public address" do
+      share
+      get "/g", {}, 'REMOTE_ADDR' => '203.0.113.5', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7'
+      expect(last_response.status).to eq(404)
+    end
+
+    it "keeps the last untrusted hop when several proxies are chained" do
+      share
+      get "/g", {}, 'REMOTE_ADDR' => '172.18.0.2', 'HTTP_X_FORWARDED_FOR' => '10.0.0.9, 198.51.100.7, 172.18.0.3'
+      expect(last_response).to be_ok
+    end
+  end
 end
