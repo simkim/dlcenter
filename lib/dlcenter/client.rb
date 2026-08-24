@@ -42,6 +42,22 @@ module DLCenter
       send_msg(:stream, uuid: stream.uuid, share: stream.share.uuid)
       return stream
     end
+    def active_streams
+      @streams
+    end
+    # The downloader of `stream` went away: forget the stream and tell the
+    # sender to stop pushing data for it.
+    def abort_stream(stream)
+      return unless @streams.delete(stream.uuid)
+      stream.abort
+      send_msg(:stream_close, uuid: stream.uuid)
+    end
+    # The sender is gone: end every download it was feeding.
+    def close_streams
+      streams = @streams.values
+      @streams.clear
+      streams.each(&:close)
+    end
     def send_msg(msg, options={})
       raise NotImplementedError.new(msg)
     end
@@ -60,17 +76,24 @@ module DLCenter
           })
         self.add_share(share)
     end
+    # Runs in a worker thread (Sinatra streams are deferred on EventMachine):
+    # pace the reads on the downloader actually consuming the data.
     def flush_io(uuid)
       stream = @streams[uuid]
+      drained = Queue.new
       begin
         while (data = @io_in.read 1024*1024)
+          break if stream.closed?
           stream.got_chunk(data)
           stream.drain_buffer
+          stream.when_drained { drained.push(true) }
+          drained.pop
         end
       rescue IOError => e
         puts "Error while flushing #{e}"
       end
       stream.close
+      @streams.delete(uuid)
       @io_out.close
       @namespace.remove_client(self)
     end
@@ -79,6 +102,7 @@ module DLCenter
       when :shares then nil
       when :hello  then nil
       when :stream then flush_io(params[:uuid])
+      when :stream_close then nil
       else
         raise "Invalid msg type #{msg} with params #{params}"
       end
@@ -87,51 +111,76 @@ module DLCenter
 
   class WSClient < Client
     HEARTBEAT_INTERVAL = 30  # seconds between pings
-    HEARTBEAT_TIMEOUT = 10   # seconds to wait for pong
+    HEARTBEAT_TIMEOUT = 30   # seconds to wait for pong (slow uplinks may delay it behind chunks)
 
-    def initialize namespace, ws
+    # `on_close` is invoked once when the socket is gone (after the client
+    # has been removed from its namespace).
+    def initialize namespace, ws, &on_close
       super(namespace)
       @ws = ws
-      @pong_received = true
+      @on_close = on_close
+      @alive = true
       @heartbeat_timer = nil
       @timeout_timer = nil
 
       ws.onopen do
-        self.send_msg(:hello, text: "Hello World!")
-        self.send_msg(:shares, shares: @namespace.get_shares_json)
-        start_heartbeat
+        guard("onopen") do
+          self.send_msg(:hello, text: "Hello World!")
+          self.send_msg(:shares, shares: @namespace.get_shares_json)
+          start_heartbeat
+        end
       end
       ws.onmessage do |tmsg|
-
-        begin
-          msg = JSON.parse(tmsg, symbolize_names: true)
-        rescue
-          puts "Can't parse JSON message"
+        guard("onmessage") do
+          # Any traffic proves the client is alive
+          @alive = true
+          begin
+            msg = JSON.parse(tmsg, symbolize_names: true)
+          rescue JSON::ParserError
+            puts "Can't parse JSON message"
+            next
+          end
+          self.handle_ws_msg(msg) if msg.is_a?(Hash)
         end
-        self.handle_ws_msg(msg)
-
       end
       ws.onclose do
-        puts "WS closed"
-        stop_heartbeat
-        @namespace.remove_client(self)
+        guard("onclose") do
+          puts "WS closed"
+          stop_heartbeat
+          @namespace.remove_client(self)
+          @on_close.call if @on_close
+        end
       end
     end
 
+    # A raised exception in an EventMachine callback or timer takes the whole
+    # server down with it (and every connected user). Never let that happen
+    # because of one misbehaving client.
+    def guard(context)
+      yield
+    rescue StandardError => e
+      puts "Error in WebSocket #{context}: #{e.class}: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if e.backtrace
+    end
+
     def start_heartbeat
-      @heartbeat_timer = EM.add_periodic_timer(HEARTBEAT_INTERVAL) do
-        if @pong_received
-          @pong_received = false
-          send({type: :ping}.to_json)
-          @timeout_timer = EM.add_timer(HEARTBEAT_TIMEOUT) do
-            unless @pong_received
-              puts "Heartbeat timeout, closing connection"
-              @ws.close
+      @heartbeat_timer = EM.add_periodic_timer(self.class::HEARTBEAT_INTERVAL) do
+        guard("heartbeat") do
+          if @alive
+            @alive = false
+            send({type: :ping}.to_json)
+            @timeout_timer = EM.add_timer(self.class::HEARTBEAT_TIMEOUT) do
+              guard("heartbeat timeout") do
+                unless @alive
+                  puts "Heartbeat timeout, closing connection"
+                  close_ws
+                end
+              end
             end
+          else
+            puts "No pong received, closing connection"
+            close_ws
           end
-        else
-          puts "No pong received, closing connection"
-          @ws.close
         end
       end
     end
@@ -143,11 +192,23 @@ module DLCenter
       @timeout_timer = nil
     end
 
+    def close_ws
+      stop_heartbeat
+      if @ws.respond_to?(:close_websocket)
+        @ws.close_websocket
+      elsif @ws.respond_to?(:close)
+        @ws.close
+      end
+    rescue StandardError => e
+      puts "Can't close websocket: #{e.message}"
+    end
+
     def send_msg(msg, params={})
       case msg
       when :shares then send({type: :shares, shares: params[:shares]}.to_json)
       when :hello  then send({type: :hello, text: params[:text]}.to_json)
       when :stream then send({type: :stream}.merge(params).to_json)
+      when :stream_close then send({type: :stream_close, uuid: params[:uuid]}.to_json)
       else
         raise "Invalid msg type #{msg} with params #{params}"
       end
@@ -156,7 +217,7 @@ module DLCenter
     def send(ws_msg)
       begin
         @ws.send(ws_msg)
-      rescue
+      rescue StandardError
         puts "Can't send message to #{@ws}"
       end
     end
@@ -249,27 +310,38 @@ module DLCenter
       end
 
       stream = @streams[uuid]
-      if stream
-        chunk = Base64.decode64(encoded_chunk)
-        # Validate chunk size
-        if chunk.length > MAX_CHUNK_SIZE
-          puts "Chunk too large: #{chunk.length} bytes"
-          return false
-        end
-        stream.got_chunk(chunk)
-        begin
-          stream.drain_buffer
-          if msg[:close] then
-            stream.close
-          end
-          return true
-        rescue IOError
-          puts "ERROR: can't send data to client"
-        end
-      else
+      unless stream
         puts "Unknown stream #{uuid}"
+        return false
       end
-      return false
+
+      chunk = Base64.decode64(encoded_chunk)
+      # Validate chunk size
+      if chunk.length > MAX_CHUNK_SIZE
+        puts "Chunk too large: #{chunk.length} bytes"
+        return false
+      end
+
+      begin
+        stream.got_chunk(chunk)
+        stream.drain_buffer
+      rescue IOError
+        puts "ERROR: can't send data to client"
+        @streams.delete(uuid)
+        return false
+      end
+
+      if msg[:close]
+        stream.close
+        @streams.delete(uuid)
+      else
+        # Flow control: only ask the sender for more once the downloader has
+        # actually consumed what we already have.
+        stream.when_drained do
+          send({type: :ack, uuid: uuid}.to_json) unless stream.closed?
+        end
+      end
+      return true
     end
 
     def handle_ws_msg(msg)
@@ -279,7 +351,7 @@ module DLCenter
       when 'unregister_share' then handle_unregister_share(msg)
       when 'chunk' then handle_chunk(msg)
       when 'ping' then send({type: :pong}.to_json)
-      when 'pong' then @pong_received = true
+      when 'pong' then nil # liveness already recorded in onmessage
       else puts "Unkown msg : #{msg}"
       end
     end

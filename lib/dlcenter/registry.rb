@@ -11,6 +11,9 @@ module DLCenter
     end
 
     def remove_client(client)
+      # Downloads in progress from this client can't complete anymore:
+      # close them so downloaders don't hang waiting for data.
+      client.close_streams if client.respond_to?(:close_streams)
       @clients.delete client
       broadcast_available_shares
     end
@@ -76,13 +79,6 @@ module DLCenter
         end
       end
     end
-    # def each_share
-    #   each_namespace do |namespace|
-    #     namespace.shares.each do |share|
-    #       yield share
-    #     end
-    #   end
-    # end
     def share_count
       count = 0
       each_namespace do |namespace|
@@ -90,9 +86,6 @@ module DLCenter
       end
       count
     end
-    # def to_s
-    #   "Registry (#{share_count} shares)"
-    # end
     def get_share_by_uuid(uuid)
       # TODO: create a weak cache for retrieving in O(1) the share
       each_namespace do |namespace|

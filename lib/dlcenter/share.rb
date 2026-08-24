@@ -19,7 +19,7 @@ module DLCenter
       raise "Must have a name" unless self.name
     end
 
-    def self.content(shares, out)
+    def self.content(shares, out, connection: nil, closer: nil)
       w = ZipTricks::BlockWrite.new { |chunk| out.write(chunk) }
       ZipTricks::Streamer.open(w) do |zip|
         shares.each do |share|
@@ -27,7 +27,7 @@ module DLCenter
           safe_name = sanitize_zip_filename(share.name)
           zip.write_deflated_file(safe_name) do |sink|
             r, w = IO.pipe
-            share.content(w)
+            share.content(w, connection: connection, closer: closer)
             while true
               buffer = r.read(65536)
               sink << buffer
@@ -49,8 +49,14 @@ module DLCenter
       safe.empty? ? 'file' : safe
     end
 
-    def content(out)
-      Streamer.new(self, out).tap do |stream|
+    # Starts streaming this share to `out`. `connection` (the downloader's
+    # EventMachine connection) enables backpressure; `closer` (deferrable
+    # fired when the downloader disconnects) lets us stop the sender early.
+    def content(out, connection: nil, closer: nil)
+      Streamer.new(self, out, connection: connection).tap do |stream|
+        if closer.respond_to?(:callback)
+          closer.callback { client.abort_stream(stream) }
+        end
         client.ask_for_stream(stream)
       end
     end

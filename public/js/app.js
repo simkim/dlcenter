@@ -8,6 +8,9 @@ function App() {
   const [textValue, setTextValue] = useState('');
   const wsRef = useRef(null);
   const pingRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const reconnectDelayRef = useRef(1000);
+  const setupRef = useRef(null);
   // Keep a synchronous ref of local shares for streaming lookups
   const localSharesRef = useRef({});
   const downloadHost = `${document.location.protocol}//${document.location.host}`;
@@ -101,16 +104,70 @@ function App() {
     }
   }, []);
 
+  // Announce every local share to the server (on connect and after every
+  // reconnect, since the server forgets us when the socket drops).
+  const registerLocalShares = useCallback((ws) => {
+    Object.values(localSharesRef.current).forEach((share) => {
+      if (share.file) {
+        ws.send(JSON.stringify({
+          type: "register_share",
+          uuid: share.uuid,
+          name: share.name,
+          content_type: share.type,
+          size: share.size
+        }));
+      } else if (share.content) {
+        ws.send(JSON.stringify({
+          type: "register_share",
+          uuid: share.uuid,
+          name: ellipseAt(share.content, 100),
+          content: share.content,
+          content_type: "text/plain",
+          size: share.size
+        }));
+      }
+    });
+  }, []);
+
+  // Exactly one reconnect attempt is ever pending, with exponential backoff.
+  // (Scheduling one from both onerror and onclose doubled the number of
+  // sockets on every failure and saturated the server's per-IP limit.)
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimerRef.current) return;
+    const delay = reconnectDelayRef.current;
+    reconnectDelayRef.current = Math.min(delay * 2, 30000);
+    console.log("Reconnecting in " + delay + "ms");
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      if (setupRef.current) setupRef.current();
+    }, delay);
+  }, []);
+
   const setupWebSocket = useCallback(() => {
+    const previous = wsRef.current;
+    if (previous && previous.readyState !== WebSocket.CLOSED) {
+      previous.onclose = null;
+      previous.onerror = null;
+      previous.close();
+    }
+    if (pingRef.current) {
+      clearInterval(pingRef.current);
+      pingRef.current = null;
+    }
+
     const protocol = document.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(protocol + '//' + window.location.host + "/ws");
     wsRef.current = ws;
 
     ws.onopen = () => {
       setConnected(true);
+      reconnectDelayRef.current = 1000;
       console.log('websocket opened');
+      registerLocalShares(ws);
       pingRef.current = setInterval(() => {
-        ws.send(JSON.stringify({ type: "ping" }));
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
       }, 10000);
     };
 
@@ -118,21 +175,20 @@ function App() {
       console.log("Websocket closed");
       setConnected(false);
       setRemoteShares([]);
+      streamAbortAll();
       if (pingRef.current) {
         clearInterval(pingRef.current);
+        pingRef.current = null;
       }
-      setTimeout(setupWebSocket, 2000);
+      scheduleReconnect();
     };
 
     ws.onerror = () => {
+      // A close event always follows an error; reconnection is handled there.
       console.log("Websocket error");
-      setConnected(false);
-      setRemoteShares([]);
-      setTimeout(setupWebSocket, 10000);
     };
 
     ws.onmessage = (m) => {
-      console.log('websocket message: ' + m.data);
       const msg = JSON.parse(m.data);
       switch (msg.type) {
         case "shares":
@@ -144,28 +200,41 @@ function App() {
         case "stream":
           handleStream(msg);
           break;
+        case "ack":
+          streamAck(msg.uuid);
+          break;
+        case "stream_close":
+          streamAbort(msg.uuid);
+          break;
         case "ping":
           ws.send(JSON.stringify({ type: "pong" }));
           break;
         case "pong":
           break;
         default:
-          console.error("Unknown message: " + msg.type);
+          console.warn("Unknown message: " + msg.type);
       }
     };
-  }, [handleStream]);
+  }, [handleStream, registerLocalShares, scheduleReconnect]);
+  setupRef.current = setupWebSocket;
 
   useEffect(() => {
     setupWebSocket();
     return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (wsRef.current) {
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
       if (pingRef.current) {
         clearInterval(pingRef.current);
+        pingRef.current = null;
       }
     };
-  }, [setupWebSocket]);
+  }, []);
 
   useEffect(() => {
     const dropZone = document.querySelector('.dropzone');
