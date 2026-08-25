@@ -5,7 +5,10 @@ setup = "bundle install"
 run_mode = "concurrent"
 
 [scripts.run.dev]
-command = "bundle exec rackup -p $CONDUCTOR_PORT"
+# DLCENTER_COMMON_CONTEXT: all clients in one namespace, so a phone on the
+# LAN and the browser on localhost see each other's shares
+# -o 0.0.0.0: let that phone reach the dev server at all
+command = "DLCENTER_COMMON_CONTEXT=1 bundle exec rackup -o 0.0.0.0 -p $CONDUCTOR_PORT"
 available_in = [ "local" ]
 default = true
 icon = "play"
