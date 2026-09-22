@@ -22,6 +22,7 @@ const RTC_HIGH_WATER = 4 * 1024 * 1024;        // sender pauses above this buffe
 const RTC_LOW_WATER = 1024 * 1024;             // ...and resumes below this
 const RTC_BLOB_MAX = 200 * 1024 * 1024;        // in-memory sink limit without a service worker
 const RTC_SENDER_LINGER = 60000;               // ms a sender waits for the receiver to close
+const RTC_SW_KEEPALIVE = 10000;                // ms between service worker keepalive pings
 
 const rtcSessions = {};        // session uuid => state (either role)
 const rtcPendingOffers = {};   // share uuid => receiver state waiting for its session id
@@ -260,14 +261,26 @@ function rtcStreamSink() {
   let port = null;
   let ready = false;
   let iframe = null;
+  let keepalive = null;
   const sink = { oncancel: null };
 
   const post = (msg, transfer) => port.postMessage(msg, transfer || []);
   const removeIframe = () => { if (iframe) { iframe.remove(); iframe = null; } };
+  // Browsers stop an idle service worker (Firefox after 30 s), which cuts the
+  // download short. Messages on our MessagePort don't count as activity, only
+  // messages to the worker itself do: ping it for as long as the download runs.
+  const startKeepalive = () => {
+    keepalive = setInterval(() => {
+      const worker = navigator.serviceWorker.controller;
+      if (worker) worker.postMessage({ type: 'keepalive' });
+    }, RTC_SW_KEEPALIVE);
+  };
+  const stopKeepalive = () => { clearInterval(keepalive); keepalive = null; };
 
   sink.start = (name, size) => new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     port = channel.port1;
+    startKeepalive();
     const timer = setTimeout(() => reject(new Error('service worker did not answer')), 2000);
     port.onmessage = (e) => {
       const msg = e.data || {};
@@ -283,6 +296,7 @@ function rtcStreamSink() {
         document.body.appendChild(iframe);
         resolve();
       } else if (msg.type === 'dl-cancel') {
+        stopKeepalive();
         if (sink.oncancel) sink.oncancel();
       }
     };
@@ -294,9 +308,11 @@ function rtcStreamSink() {
   };
   sink.close = () => {
     post({ type: 'dl-end' });
-    setTimeout(removeIframe, RTC_SENDER_LINGER);
+    // The worker may still be flushing queued chunks to disk.
+    setTimeout(() => { stopKeepalive(); removeIframe(); }, RTC_SENDER_LINGER);
   };
   sink.abort = () => {
+    stopKeepalive();
     if (port) post({ type: 'dl-abort' });
     removeIframe();
   };
