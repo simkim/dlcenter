@@ -25,7 +25,10 @@ WebSocket:
 A service worker (`public/sw.js`) streams direct transfers straight into a
 regular browser download, so file size is not limited by memory. Without it
 (unsupported browser, insecure context), files up to 200 MB are saved from
-memory and bigger ones use the relay.
+memory and bigger ones use the relay. The page pings the worker every 10
+seconds while a download runs: browsers stop idle workers (Firefox after 30
+seconds, whatever is still streaming), which used to cut big direct downloads
+short around 400 MB.
 
 Server logs report how each direct session ended (`RTC session ... closed:
 done|timeout|...`), which tells you how often the direct path actually works.

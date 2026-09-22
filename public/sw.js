@@ -5,6 +5,8 @@
 // The page sends {type: 'dl-open', id, name, size} with a MessagePort, then
 // pushes ArrayBuffers on that port, then {type: 'dl-end'} (or 'dl-abort').
 // Navigating to /dl/<id> is answered with a streaming attachment response.
+// Meanwhile the page sends {type: 'keepalive'} to the worker itself: messages
+// on the port don't keep it alive, and a stopped worker truncates the download.
 
 const streams = new Map();
 
@@ -13,6 +15,7 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 
 self.addEventListener('message', (event) => {
   const data = event.data;
+  // A 'keepalive' has done its job by being delivered.
   if (!data || data.type !== 'dl-open' || !event.ports[0]) return;
   const port = event.ports[0];
   let controller = null;
